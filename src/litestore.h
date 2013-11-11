@@ -5,13 +5,13 @@
 extern "C" {
 #endif
 
-typedef struct LiteStoreCtx LiteStoreCtx;
+typedef struct litestore_ctx litestore_ctx;
 
-LiteStoreCtx* litestore_open(const char* db_file_name);
-void litestore_close(LiteStoreCtx* ctx);
+litestore_ctx* litestore_open(const char* db_file_name);
+void litestore_close(litestore_ctx* ctx);
 
-char* litestore_get(LiteStoreCtx* ctx, const char* key);
-int litestore_save(LiteStoreCtx* ctx,
+char* litestore_get(litestore_ctx* ctx, const char* key);
+int litestore_save(litestore_ctx* ctx,
                    const char* key, const char* value);
 
 #ifdef __cplusplus

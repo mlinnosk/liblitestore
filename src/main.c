@@ -5,7 +5,7 @@
 
 int main()
 {
-    LiteStoreCtx* ctx = litestore_open("/tmp/foo");
+    litestore_ctx* ctx = litestore_open("/tmp/foo");
     if (ctx)
     {
         printf("OK\n");
