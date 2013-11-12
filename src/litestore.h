@@ -7,10 +7,16 @@ extern "C" {
 
 typedef struct litestore_ctx litestore_ctx;
 
-litestore_ctx* litestore_open(const char* db_file_name);
+enum
+{
+    LITESTORE_OK = 0,
+    LITESTORE_ERR = -1
+};
+
+int litestore_open(const char* db_file_name, litestore_ctx** ctx);
 void litestore_close(litestore_ctx* ctx);
 
-char* litestore_get(litestore_ctx* ctx, const char* key);
+int litestore_get(litestore_ctx* ctx, const char* key, char** value);
 int litestore_save(litestore_ctx* ctx,
                    const char* key, const char* value);
 
