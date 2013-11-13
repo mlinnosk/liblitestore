@@ -10,24 +10,43 @@
 extern "C"
 #endif
 
-char* ls_strdup(const char* str)
-{
-    const size_t LEN = strlen(str) + 1;
-    char* copy = (char*)malloc(LEN);
-    if (!copy)
-    {
-        return NULL;
-    }
-    memcpy(copy, str, LEN - 1);
-    copy[LEN] = '\0';
-    return copy;
-}
-
+/**
+ * The LiteStore object.
+ */
 struct litestore_ctx
 {
     sqlite3* db;
     sqlite3_stmt* save_stmt;
 };
+
+/* Possible db.objects.type values */
+enum
+{
+    LS_NULL = 0,
+    LS_RAW,
+    LS_EMPTY_ARRAY,
+    LS_EMPTY_OBJECT,
+    LS_ARRAY,
+    LS_OBJECT
+};
+
+/* char* ls_strdup(const char* str) */
+/* { */
+/*     const size_t LEN = strlen(str) + 1; */
+/*     char* copy = (char*)malloc(LEN); */
+/*     if (!copy) */
+/*     { */
+/*         return NULL; */
+/*     } */
+/*     memcpy(copy, str, LEN - 1); */
+/*     copy[LEN] = '\0'; */
+/*     return copy; */
+/* } */
+
+void print_sqlite_error(litestore_ctx* ctx)
+{
+    printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
+}
 
 int prepare_statements(litestore_ctx* ctx)
 {
@@ -39,7 +58,7 @@ int prepare_statements(litestore_ctx* ctx)
                            NULL)
         != SQLITE_OK)
     {
-        printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
+        print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
     return LITESTORE_OK;
@@ -51,6 +70,20 @@ int finalize_statements(litestore_ctx* ctx)
     ctx->save_stmt = NULL;
     return LITESTORE_OK;
 }
+
+int resolve_value_type(const char* value, const size_t value_len)
+{
+    if (value && value_len)
+    {
+        /* @todo */
+        return LS_RAW;
+    }
+    return LS_NULL;
+}
+
+/*-----------------------------------------*/
+/*------------------ API ------------------*/
+/*-----------------------------------------*/
 
 int litestore_open(const char* db_file_name, litestore_ctx** ctx)
 {
@@ -91,9 +124,29 @@ int litestore_get(litestore_ctx* ctx, const char* key, char** value)
 }
 
 int litestore_save(litestore_ctx* ctx,
-                   const char* key, const char* value)
+                   const char* key, const size_t key_len,
+                   const char* value, const size_t value_len)
 {
-    return LITESTORE_OK;
+    if (ctx && ctx->save_stmt && key)
+    {
+        const int type = resolve_value_type(value, value_len);
+        sqlite3_reset(ctx->save_stmt);
+        if (sqlite3_bind_text(ctx->save_stmt,
+                              1, key, key_len,
+                              SQLITE_STATIC) != SQLITE_OK
+            || sqlite3_bind_int(ctx->save_stmt, 2, type) != SQLITE_OK)
+        {
+            print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        if (sqlite3_step(ctx->save_stmt) != SQLITE_DONE)
+        {
+            print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        return LITESTORE_OK;
+    }
+    return LITESTORE_ERR;
 }
 
 #ifdef __cplusplus

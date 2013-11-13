@@ -1,6 +1,9 @@
 #ifndef LITESTORE_LITESTORE_H
 #define LITESTORE_LITESTORE_H
 
+#include <stddef.h>
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,7 +21,8 @@ void litestore_close(litestore_ctx* ctx);
 
 int litestore_get(litestore_ctx* ctx, const char* key, char** value);
 int litestore_save(litestore_ctx* ctx,
-                   const char* key, const char* value);
+                   const char* key, const size_t key_len,
+                   const char* value, const size_t value_len);
 
 #ifdef __cplusplus
 }  /* extern "C" */
