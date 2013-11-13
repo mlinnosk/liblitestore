@@ -3,7 +3,7 @@ CREATE TABLE meta(
 );
 CREATE TABLE objects(
 	   id INTEGER PRIMARY KEY NOT NULL,
-	   name TEXT NOT NULL,
+	   name TEXT NOT NULL UNIQUE,
 	   type INTEGER NOT NULL
 );
 CREATE TABLE object_data(
