@@ -11,7 +11,7 @@ int main()
     {
         const char* key = "foo";
         const char* value = "value";
-        if (litestore_save(ctx, key, strlen(key), value, strlen(value))
+        if (litestore_save(ctx, key, strlen(key), value, 0)
             == LITESTORE_OK)
         {
             printf("OK\n");
