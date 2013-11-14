@@ -51,6 +51,8 @@ void ls_print_sqlite_error(litestore_ctx* ctx)
 
 int ls_prepare_statements(litestore_ctx* ctx)
 {
+    sqlite3_exec(ctx->db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+
     const char* save_key =
         "INSERT INTO objects (name, type) VALUES (?, ?);";
     const char* save_raw_data =
