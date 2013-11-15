@@ -6,15 +6,27 @@
 
 int main()
 {
-    litestore_ctx* ctx = NULL;
+    litestore* ctx = NULL;
     if (litestore_open("/tmp/foo.db", &ctx) == LITESTORE_OK)
     {
         const char* key = "foo";
         const char* value = "value";
-        if (litestore_save(ctx, key, strlen(key), value, 0)
+        if (litestore_save(ctx, key, strlen(key), value, strlen(value))
             == LITESTORE_OK)
         {
-            printf("OK\n");
+            printf("SAVE OK\n");
+            if (litestore_delete(ctx, key, strlen(key)) == LITESTORE_OK)
+            {
+                printf("DEL OK\n");
+            }
+            else
+            {
+                printf("DEL ERR\n");
+            }
+        }
+        else
+        {
+            printf("SAVE ERR\n");
         }
         litestore_close(ctx);
     }

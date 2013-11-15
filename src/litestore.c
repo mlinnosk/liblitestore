@@ -18,6 +18,7 @@ struct litestore
     sqlite3* db;
     sqlite3_stmt* save_key;
     sqlite3_stmt* save_raw_data;
+    sqlite3_stmt* delete_key;
 };
 
 /* Possible db.objects.type values */
@@ -57,6 +58,8 @@ int ls_prepare_statements(litestore* ctx)
         "INSERT INTO objects (name, type) VALUES (?, ?);";
     const char* save_raw_data =
         "INSERT INTO raw_data (id, raw_value) VALUES (?, ?)";
+    const char* delete_key =
+        "DELETE FROM objects WHERE name = ?";
     if (sqlite3_prepare_v2(ctx->db,
                            save_key,
                            -1,
@@ -77,6 +80,17 @@ int ls_prepare_statements(litestore* ctx)
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
+    if (sqlite3_prepare_v2(ctx->db,
+                           delete_key,
+                           -1,
+                           &(ctx->delete_key),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+
     return LITESTORE_OK;
 }
 
@@ -86,6 +100,8 @@ int ls_finalize_statements(litestore* ctx)
     ctx->save_key = NULL;
     sqlite3_finalize(ctx->save_raw_data);
     ctx->save_raw_data = NULL;
+    sqlite3_finalize(ctx->delete_key);
+    ctx->delete_key = NULL;
 
     return LITESTORE_OK;
 }
@@ -236,6 +252,31 @@ int litestore_save(litestore* ctx,
     }
 
     return rv;
+}
+
+int litestore_delete(litestore* ctx,
+                     const char* key, const size_t key_len)
+{
+    /* delete should cascade */
+    if (ctx && key && key_len > 0 && ctx->delete_key)
+    {
+        sqlite3_reset(ctx->delete_key);
+        if (sqlite3_bind_text(ctx->delete_key,
+                              1, key, key_len,
+                              SQLITE_STATIC) != SQLITE_OK)
+        {
+            ls_print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        if (sqlite3_step(ctx->delete_key) != SQLITE_DONE)
+        {
+            ls_print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        return (sqlite3_changes(ctx->db) == 1 ?
+                LITESTORE_OK : LITESTORE_UNKNOWN_ENTITY);
+    }
+    return LITESTORE_ERR;
 }
 
 #ifdef __cplusplus
