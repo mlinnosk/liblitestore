@@ -13,7 +13,7 @@ extern "C"
 /**
  * The LiteStore object.
  */
-struct litestore_ctx
+struct litestore
 {
     sqlite3* db;
     sqlite3_stmt* save_key;
@@ -44,12 +44,12 @@ enum
 /*     return copy; */
 /* } */
 
-void ls_print_sqlite_error(litestore_ctx* ctx)
+void ls_print_sqlite_error(litestore* ctx)
 {
     printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
 }
 
-int ls_prepare_statements(litestore_ctx* ctx)
+int ls_prepare_statements(litestore* ctx)
 {
     sqlite3_exec(ctx->db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
 
@@ -80,7 +80,7 @@ int ls_prepare_statements(litestore_ctx* ctx)
     return LITESTORE_OK;
 }
 
-int ls_finalize_statements(litestore_ctx* ctx)
+int ls_finalize_statements(litestore* ctx)
 {
     sqlite3_finalize(ctx->save_key);
     ctx->save_key = NULL;
@@ -111,9 +111,9 @@ int ls_resolve_value_type(const char* value, const size_t value_len)
 /*----------------- SAVE ------------------*/
 /*-----------------------------------------*/
 
-int ls_save_key(litestore_ctx* ctx,
-             const char* key, const size_t key_len,
-             const int data_type)
+int ls_save_key(litestore* ctx,
+                const char* key, const size_t key_len,
+                const int data_type)
 {
     if (ctx->save_key)
     {
@@ -137,9 +137,9 @@ int ls_save_key(litestore_ctx* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_save_raw_data(litestore_ctx* ctx,
-                  const char* key, const size_t key_len,
-                  const char* value, const size_t value_len)
+int ls_save_raw_data(litestore* ctx,
+                     const char* key, const size_t key_len,
+                     const char* value, const size_t value_len)
 {
     if (ctx->save_key && ctx->save_raw_data)
     {
@@ -168,8 +168,8 @@ int ls_save_raw_data(litestore_ctx* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_save_null(litestore_ctx* ctx,
-              const char* key, const size_t key_len)
+int ls_save_null(litestore* ctx,
+                 const char* key, const size_t key_len)
 {
     return ls_save_key(ctx, key, key_len, LS_NULL);
 }
@@ -178,12 +178,12 @@ int ls_save_null(litestore_ctx* ctx,
 /*------------------ API ------------------*/
 /*-----------------------------------------*/
 
-int litestore_open(const char* db_file_name, litestore_ctx** ctx)
+int litestore_open(const char* db_file_name, litestore** ctx)
 {
-    *ctx = (litestore_ctx*)malloc(sizeof(litestore_ctx));
+    *ctx = (litestore*)malloc(sizeof(litestore));
     if (*ctx)
     {
-        memset(*ctx, 0, sizeof(litestore_ctx));
+        memset(*ctx, 0, sizeof(litestore));
 
         if (sqlite3_open(db_file_name, &(*ctx)->db) != SQLITE_OK)
         {
@@ -197,7 +197,7 @@ int litestore_open(const char* db_file_name, litestore_ctx** ctx)
     return LITESTORE_ERR;
 }
 
-void litestore_close(litestore_ctx* ctx)
+void litestore_close(litestore* ctx)
 {
     if (ctx)
     {
@@ -211,12 +211,12 @@ void litestore_close(litestore_ctx* ctx)
     }
 }
 
-int litestore_get(litestore_ctx* ctx, const char* key, char** value)
+int litestore_get(litestore* ctx, const char* key, char** value)
 {
     return LITESTORE_ERR;
 }
 
-int litestore_save(litestore_ctx* ctx,
+int litestore_save(litestore* ctx,
                    const char* key, const size_t key_len,
                    const char* value, const size_t value_len)
 {
