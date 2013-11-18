@@ -19,6 +19,8 @@ struct litestore
     sqlite3_stmt* save_key;
     sqlite3_stmt* save_raw_data;
     sqlite3_stmt* delete_key;
+    sqlite3_stmt* get_key;
+    sqlite3_stmt* get_raw_data;
 };
 
 /* Possible db.objects.type values */
@@ -32,18 +34,25 @@ enum
     LS_OBJECT
 };
 
-/* char* ls_strdup(const char* str) */
-/* { */
-/*     const size_t LEN = strlen(str) + 1; */
-/*     char* copy = (char*)malloc(LEN); */
-/*     if (!copy) */
-/*     { */
-/*         return NULL; */
-/*     } */
-/*     memcpy(copy, str, LEN - 1); */
-/*     copy[LEN] = '\0'; */
-/*     return copy; */
-/* } */
+/* The native db ID type */
+typedef sqlite3_int64 litestore_id_t;
+
+/*
+ * Allocates a buffer and copies the str data of len to the new buffer.
+ * The copy will be null terminated
+ */
+char* ls_strdup(const void* str, const size_t len)
+{
+    const size_t LEN = len + 1; /* extra for terminator */
+    char* copy = (char*)malloc(LEN);
+    if (!copy)
+    {
+        return NULL;
+    }
+    memcpy(copy, str, len);
+    copy[len] = 0;
+    return copy;
+}
 
 void ls_print_sqlite_error(litestore* ctx)
 {
@@ -56,10 +65,6 @@ int ls_prepare_statements(litestore* ctx)
 
     const char* save_key =
         "INSERT INTO objects (name, type) VALUES (?, ?);";
-    const char* save_raw_data =
-        "INSERT INTO raw_data (id, raw_value) VALUES (?, ?)";
-    const char* delete_key =
-        "DELETE FROM objects WHERE name = ?";
     if (sqlite3_prepare_v2(ctx->db,
                            save_key,
                            -1,
@@ -70,6 +75,8 @@ int ls_prepare_statements(litestore* ctx)
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
+    const char* save_raw_data =
+        "INSERT INTO raw_data (id, raw_value) VALUES (?, ?)";
     if (sqlite3_prepare_v2(ctx->db,
                            save_raw_data,
                            -1,
@@ -80,6 +87,8 @@ int ls_prepare_statements(litestore* ctx)
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
+    const char* delete_key =
+        "DELETE FROM objects WHERE name = ?";
     if (sqlite3_prepare_v2(ctx->db,
                            delete_key,
                            -1,
@@ -90,7 +99,30 @@ int ls_prepare_statements(litestore* ctx)
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
-
+    const char* get_key =
+        "SELECT id, type FROM objects WHERE name = ?";
+    if (sqlite3_prepare_v2(ctx->db,
+                           get_key,
+                           -1,
+                           &(ctx->get_key),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+    const char* get_raw_data =
+        "SELECT raw_value FROM raw_data WHERE id = ?";
+    if (sqlite3_prepare_v2(ctx->db,
+                           get_raw_data,
+                           -1,
+                           &(ctx->get_raw_data),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
     return LITESTORE_OK;
 }
 
@@ -102,6 +134,10 @@ int ls_finalize_statements(litestore* ctx)
     ctx->save_raw_data = NULL;
     sqlite3_finalize(ctx->delete_key);
     ctx->delete_key = NULL;
+    sqlite3_finalize(ctx->get_key);
+    ctx->get_key = NULL;
+    sqlite3_finalize(ctx->get_raw_data);
+    ctx->get_raw_data = NULL;
 
     return LITESTORE_OK;
 }
@@ -162,7 +198,7 @@ int ls_save_raw_data(litestore* ctx,
         sqlite3_reset(ctx->save_raw_data);
         if (ls_save_key(ctx, key, key_len, LS_RAW) != LITESTORE_ERR)
         {
-            const sqlite3_int64 lastId =
+            const litestore_id_t lastId =
                 sqlite3_last_insert_rowid(ctx->db);
             if (sqlite3_bind_int64(ctx->save_raw_data,
                                    1, lastId) != SQLITE_OK
@@ -188,6 +224,75 @@ int ls_save_null(litestore* ctx,
                  const char* key, const size_t key_len)
 {
     return ls_save_key(ctx, key, key_len, LS_NULL);
+}
+
+/*-----------------------------------------*/
+/*----------------- GET -------------------*/
+/*-----------------------------------------*/
+
+int ls_get_key_type(litestore* ctx,
+                    const char* key, const size_t key_len,
+                    litestore_id_t* id, int* type)
+{
+    if (ctx->get_key && key && key_len > 0)
+    {
+        sqlite3_reset(ctx->get_key);
+        if (sqlite3_bind_text(ctx->get_key,
+                              1, key, key_len,
+                              SQLITE_STATIC) != SQLITE_OK)
+        {
+            ls_print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        /* expect only one aswer */
+        if (sqlite3_step(ctx->get_key) != SQLITE_ROW)
+        {
+            *id = 0;
+            *type = -1;
+            ls_print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        *id = sqlite3_column_int64(ctx->get_key, 0);
+        *type = sqlite3_column_int(ctx->get_key, 1);
+        return LITESTORE_OK;
+    }
+    return LITESTORE_ERR;
+}
+
+int ls_get_raw_data(litestore* ctx,
+                    const litestore_id_t id,
+                    char** value, size_t* value_len)
+{
+    if (ctx->get_raw_data)
+    {
+        sqlite3_reset(ctx->get_raw_data);
+        if (sqlite3_bind_int64(ctx->get_raw_data,
+                               1, id) != SQLITE_OK)
+        {
+            ls_print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        /* expect only one aswer */
+        if (sqlite3_step(ctx->get_raw_data) != SQLITE_ROW)
+        {
+            ls_print_sqlite_error(ctx);
+            return LITESTORE_ERR;
+        }
+        const void* raw_data = sqlite3_column_blob(ctx->get_raw_data,
+                                                   0);
+        const int bytes = sqlite3_column_bytes(ctx->get_raw_data,
+                                               0);
+        if (bytes > 0)
+        {
+            *value = ls_strdup(raw_data, bytes);
+            if (*value)
+            {
+                *value_len = bytes;
+                return LITESTORE_OK;
+            }
+        }
+    }
+    return LITESTORE_ERR;
 }
 
 /*-----------------------------------------*/
@@ -227,9 +332,43 @@ void litestore_close(litestore* ctx)
     }
 }
 
-int litestore_get(litestore* ctx, const char* key, char** value)
+int litestore_get(litestore* ctx,
+                  const char* key, const size_t key_len,
+                  char** value, size_t* value_len)
 {
-    return LITESTORE_ERR;
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0)
+    {
+        litestore_id_t id = 0;
+        int type = -1;
+        if (ls_get_key_type(ctx, key, key_len, &id, &type) == LITESTORE_OK)
+        {
+            switch (type)
+            {
+                case LS_NULL:
+                {
+                    if (value)
+                    {
+                        *value = NULL;
+                    }
+                    if (value_len)
+                    {
+                        *value_len = 0;
+                    }
+                    rv = LITESTORE_OK;
+                }
+                break;
+                case LS_RAW:
+                {
+                    rv = ls_get_raw_data(ctx, id, value, value_len);
+                }
+                break;
+            };
+        }
+    }
+
+    return rv;
 }
 
 int litestore_save(litestore* ctx,
