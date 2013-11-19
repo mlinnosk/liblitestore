@@ -12,7 +12,7 @@ int main()
     {
         const char* key = "foo";
         const char* value = "value";
-        if (litestore_save(ctx, key, strlen(key), value, strlen(value))
+        if (litestore_put(ctx, key, strlen(key), value, strlen(value))
             == LITESTORE_OK)
         {
             printf("SAVE OK\n");
@@ -30,7 +30,7 @@ int main()
             }
 
             const char* key2 = "null_key";
-            if (litestore_save(ctx, key2, strlen(key2), NULL, 0)
+            if (litestore_put(ctx, key2, strlen(key2), NULL, 0)
                 == LITESTORE_OK)
             {
                 if (litestore_get(ctx, key2, strlen(key2), NULL, NULL)

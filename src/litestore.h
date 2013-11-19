@@ -38,9 +38,9 @@ void litestore_close(litestore* ctx);
 int litestore_get(litestore* ctx,
                   const char* key, const size_t key_len,
                   char** value, size_t* value_len);
-int litestore_save(litestore* ctx,
-                   const char* key, const size_t key_len,
-                   const char* value, const size_t value_len);
+int litestore_put(litestore* ctx,
+                  const char* key, const size_t key_len,
+                  const char* value, const size_t value_len);
 /**
  * @return LITESTORE_OK on success,
  *         LITESTORE_UNKNOWN_ENTITY if key is not found,

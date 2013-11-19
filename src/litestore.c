@@ -163,9 +163,9 @@ int ls_resolve_value_type(const char* value, const size_t value_len)
 /*----------------- SAVE ------------------*/
 /*-----------------------------------------*/
 
-int ls_save_key(litestore* ctx,
-                const char* key, const size_t key_len,
-                const int data_type)
+int ls_put_key(litestore* ctx,
+               const char* key, const size_t key_len,
+               const int data_type)
 {
     if (ctx->save_key)
     {
@@ -189,14 +189,14 @@ int ls_save_key(litestore* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_save_raw_data(litestore* ctx,
-                     const char* key, const size_t key_len,
-                     const char* value, const size_t value_len)
+int ls_put_raw_data(litestore* ctx,
+                    const char* key, const size_t key_len,
+                    const char* value, const size_t value_len)
 {
     if (ctx->save_key && ctx->save_raw_data)
     {
         sqlite3_reset(ctx->save_raw_data);
-        if (ls_save_key(ctx, key, key_len, LS_RAW) != LITESTORE_ERR)
+        if (ls_put_key(ctx, key, key_len, LS_RAW) != LITESTORE_ERR)
         {
             const litestore_id_t lastId =
                 sqlite3_last_insert_rowid(ctx->db);
@@ -220,10 +220,10 @@ int ls_save_raw_data(litestore* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_save_null(litestore* ctx,
-                 const char* key, const size_t key_len)
+int ls_put_null(litestore* ctx,
+                const char* key, const size_t key_len)
 {
-    return ls_save_key(ctx, key, key_len, LS_NULL);
+    return ls_put_key(ctx, key, key_len, LS_NULL);
 }
 
 /*-----------------------------------------*/
@@ -371,9 +371,9 @@ int litestore_get(litestore* ctx,
     return rv;
 }
 
-int litestore_save(litestore* ctx,
-                   const char* key, const size_t key_len,
-                   const char* value, const size_t value_len)
+int litestore_put(litestore* ctx,
+                  const char* key, const size_t key_len,
+                  const char* value, const size_t value_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -382,10 +382,10 @@ int litestore_save(litestore* ctx,
         switch (ls_resolve_value_type(value, value_len))
         {
             case LS_NULL:
-                rv = ls_save_null(ctx, key, key_len);
+                rv = ls_put_null(ctx, key, key_len);
                 break;
             case LS_RAW:
-                rv = ls_save_raw_data(ctx, key, key_len, value, value_len);
+                rv = ls_put_raw_data(ctx, key, key_len, value, value_len);
                 break;
         };
     }
