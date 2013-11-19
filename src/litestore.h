@@ -38,9 +38,22 @@ void litestore_close(litestore* ctx);
 int litestore_get(litestore* ctx,
                   const char* key, const size_t key_len,
                   char** value, size_t* value_len);
+
+/**
+ * Associate the given (new) key with the given value.
+ * Will fail if key exists.
+ *
+ * @param key The key.
+ * @param key_len Length of the key, excluding null terminator.
+ * @param value The value.
+ * @param value_len Length of the value in bytes.
+ * @return LITESTORE_OK on success
+ *         LITESTORE_ERR on error.
+ */
 int litestore_put(litestore* ctx,
                   const char* key, const size_t key_len,
                   const char* value, const size_t value_len);
+
 /**
  * @return LITESTORE_OK on success,
  *         LITESTORE_UNKNOWN_ENTITY if key is not found,
