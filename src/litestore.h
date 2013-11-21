@@ -55,6 +55,21 @@ int litestore_put(litestore* ctx,
                   const char* value, const size_t value_len);
 
 /**
+ * Update existing value with new data.
+ * If the key does not exist, it will be created.
+ *
+ * @param key The key.
+ * @param key_len Length of the key, excluding null terminator.
+ * @param value The value.
+ * @param value_len Length of the value in bytes.
+ * @return LITESTORE_OK on success
+ *         LITESTORE_ERR on error.
+ */
+int litestore_update(litestore* ctx,
+                     const char* key, const size_t key_len,
+                     const char* value, const size_t value_len);
+
+/**
  * @return LITESTORE_OK on success,
  *         LITESTORE_UNKNOWN_ENTITY if key is not found,
  *         LITESTORE_ERR on other error.
