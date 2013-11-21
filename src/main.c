@@ -39,7 +39,7 @@ int main()
         const char* key = "foo";
         const char* value = "value";
         const char* value2 = "value2";
-        if (litestore_put(ctx, key, strlen(key), value, strlen(value))
+        if (litestore_put_raw(ctx, key, strlen(key), value, strlen(value))
             == LITESTORE_OK)
         {
             printf("SAVE OK\n");
@@ -56,7 +56,6 @@ int main()
                 printf("Update ERR\n");
             }
             getAndPrint(ctx, key);
-
             if (litestore_update(ctx, key, strlen(key),
                                  value2, strlen(value2)) == LITESTORE_OK)
             {
@@ -67,6 +66,32 @@ int main()
                 printf("Update ERR\n");
             }
             getAndPrint(ctx, key);
+            if (litestore_delete(ctx, key, strlen(key)) == LITESTORE_OK)
+            {
+                printf("DEL OK\n");
+            }
+            else
+            {
+                printf("DEL ERR\n");
+            }
+            if (litestore_put(ctx, key, strlen(key), value, strlen(value))
+                == LITESTORE_OK)
+            {
+                printf("SAVE OK\n");
+            }
+            else
+            {
+                printf("SAVE ERR\n");
+            }
+            getAndPrint(ctx, key);
+            if (litestore_delete(ctx, key, strlen(key)) == LITESTORE_OK)
+            {
+                printf("DEL OK\n");
+            }
+            else
+            {
+                printf("DEL ERR\n");
+            }
 
             const char* key2 = "null_key";
             if (litestore_put(ctx, key2, strlen(key2), NULL, 0)
@@ -83,7 +108,7 @@ int main()
                 {
                     printf("Update ERR\n");
                 }
-                getAndPrint(ctx, key);
+                getAndPrint(ctx, key2);
 
                 if (litestore_delete(ctx, key2, strlen(key2))
                     == LITESTORE_OK)
@@ -99,15 +124,6 @@ int main()
             else
             {
                 printf("SAVE ERR\n");
-            }
-
-            if (litestore_delete(ctx, key, strlen(key)) == LITESTORE_OK)
-            {
-                printf("DEL OK\n");
-            }
-            else
-            {
-                printf("DEL ERR\n");
             }
         }
         else

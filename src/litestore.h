@@ -33,7 +33,9 @@ void litestore_close(litestore* ctx);
  *                  On success will contain the length of the data,
  *                  NOT including NULL terminator.
  *
- * @return LITESTORE_OK on success, LITESTORE_ERR otherwise.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_UNKNOWN_ENTITY if the objects is not found,
+ *         LITESTORE_ERR otherwise.
  */
 int litestore_get(litestore* ctx,
                   const char* key, const size_t key_len,
@@ -43,6 +45,28 @@ int litestore_get(litestore* ctx,
  * Associate the given (new) key with the given value.
  * Will fail if key exists.
  *
+ * Will deduce the type of the data.
+ * @see litestore_put_raw
+ *
+ * @param key The key.
+ * @param key_len Length of the key, excluding null terminator.
+ * @param value The value, or NULL.
+ * @param value_len Length of the value in bytes, or 0.
+ * @return LITESTORE_OK on success
+ *         LITESTORE_ERR on error.
+ */
+int litestore_put(litestore* ctx,
+                  const char* key, const size_t key_len,
+                  const char* value, const size_t value_len);
+
+/**
+ * Associate the given (new) key with the given value.
+ * Will fail if key exists.
+ * Will force the type to RAW. This can have better performance
+ * in some cases.
+ *
+ * This version will NOT accept NULL data.
+ *
  * @param key The key.
  * @param key_len Length of the key, excluding null terminator.
  * @param value The value.
@@ -50,9 +74,9 @@ int litestore_get(litestore* ctx,
  * @return LITESTORE_OK on success
  *         LITESTORE_ERR on error.
  */
-int litestore_put(litestore* ctx,
-                  const char* key, const size_t key_len,
-                  const char* value, const size_t value_len);
+int litestore_put_raw(litestore* ctx,
+                      const char* key, const size_t key_len,
+                      const char* value, const size_t value_len);
 
 /**
  * Update existing value with new data.

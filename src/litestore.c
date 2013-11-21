@@ -504,6 +504,25 @@ int litestore_put(litestore* ctx,
     return rv;
 }
 
+int litestore_put_raw(litestore* ctx,
+                      const char* key, const size_t key_len,
+                      const char* value, const size_t value_len)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0 && value && value_len > 0)
+    {
+        litestore_id_t new_id = 0;
+        rv = ls_put_key(ctx, key, key_len, LS_RAW, &new_id);
+        if (rv == LITESTORE_OK)
+        {
+            rv = ls_put_raw_data(ctx, new_id, value, value_len);
+        }
+    }
+
+    return rv;
+}
+
 int litestore_update(litestore* ctx,
                      const char* key, const size_t key_len,
                      const char* value, const size_t value_len)
@@ -513,8 +532,8 @@ int litestore_update(litestore* ctx,
     {
         litestore_id_t id = 0;
         int old_type = -1;
-        if (ls_get_key_type(ctx, key, key_len, &id, &old_type)
-            == LITESTORE_OK)
+        rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
+        if (rv == LITESTORE_OK)
         {
             const int new_type = ls_resolve_value_type(value, value_len);
             switch (new_type)
@@ -533,7 +552,7 @@ int litestore_update(litestore* ctx,
                 rv = ls_update_type(ctx, id, new_type);
             }
         }
-        else
+        else if (rv == LITESTORE_UNKNOWN_ENTITY)
         {
             rv = litestore_put(ctx, key, key_len, value, value_len);
         }
