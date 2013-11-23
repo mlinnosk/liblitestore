@@ -22,7 +22,7 @@ all: ${TARGET_LIB}
 test: $(TEST_MAIN)
 	LD_LIBRARY_PATH=. ./$(TEST_MAIN)
 
-$(TEST_MAIN): $(TARGET_LIB)
+$(TEST_MAIN): $(TARGET_LIB) ${TEST_SRCS}
 	$(CCPP) -Wall -o $(TEST_MAIN) ${TEST_SRCS} -I$(TEST_INC) -L./ -l$(LIB_NAME) -lsqlite3 -lgtest -lpthread
 
 $(TARGET_LIB): $(OBJS)

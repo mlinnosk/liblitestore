@@ -431,6 +431,11 @@ void litestore_close(litestore* ctx)
     }
 }
 
+void* litestore_native_ctx(litestore* ctx)
+{
+    return ctx->db;
+}
+
 int litestore_get(litestore* ctx,
                   const char* key, const size_t key_len,
                   char** value, size_t* value_len)
