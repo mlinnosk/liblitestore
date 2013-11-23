@@ -1,6 +1,7 @@
 # Makefile template for shared library
 
 CC = gcc # C compiler
+CCPP = g++
 # CFLAGS = -Wall -O2 -fPIC
 CFLAGS = -fPIC -Wall -Wextra -O2 -g # C flags
 LDFLAGS = -shared  # linking flags
@@ -11,7 +12,8 @@ TEST_MAIN = litestore_test
 
 SRCS = src/litestore.c # source files
 OBJS = $(SRCS:.c=.o)
-TEST_SRCS = src/litestore_test.c
+TEST_SRCS = tests/main.cpp tests/litestore_test.cpp
+TEST_INC = ./src
 
 .PHONY: all
 all: ${TARGET_LIB}
@@ -21,7 +23,7 @@ test: $(TEST_MAIN)
 	LD_LIBRARY_PATH=. ./$(TEST_MAIN)
 
 $(TEST_MAIN): $(TARGET_LIB)
-	$(CC) -Wall -o $(TEST_MAIN) ${TEST_SRCS} -L./ -l$(LIB_NAME) -lsqlite3
+	$(CCPP) -Wall -o $(TEST_MAIN) ${TEST_SRCS} -I$(TEST_INC) -L./ -l$(LIB_NAME) -lsqlite3 -lgtest -lpthread
 
 $(TARGET_LIB): $(OBJS)
 	$(CC) ${LDFLAGS} -o $@ $^

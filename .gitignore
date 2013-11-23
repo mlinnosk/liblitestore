@@ -1,2 +1,3 @@
-main
+litestore_test
 *.o
+*.so
