@@ -17,13 +17,17 @@ enum
     LITESTORE_UNKNOWN_ENTITY = -2
 };
 
-
-int litestore_open(const char* db_file_name, litestore** ctx);
-void litestore_close(litestore* ctx);
 /**
  * @return The actual context of the DB. To facilitate testing.
  */
 void* litestore_native_ctx(litestore* ctx);
+
+int litestore_open(const char* db_file_name, litestore** ctx);
+void litestore_close(litestore* ctx);
+
+int litestore_begin_tx(litestore* ctx);
+int litestore_commit_tx(litestore* ctx);
+int litestore_rollback_tx(litestore* ctx);
 
 /**
  * Get a value with the given key.

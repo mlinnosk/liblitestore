@@ -23,6 +23,9 @@ struct litestore
     sqlite3_stmt* get_raw_data;
     sqlite3_stmt* update_type;
     sqlite3_stmt* delete_raw_data;
+    sqlite3_stmt* begin_tx;
+    sqlite3_stmt* commit_tx;
+    sqlite3_stmt* rollback_tx;
 };
 
 /* Possible db.objects.type values */
@@ -149,6 +152,40 @@ int ls_prepare_statements(litestore* ctx)
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
+    const char* begin_tx = "BEGIN IMMEDIATE TRANSACTION;";
+    if (sqlite3_prepare_v2(ctx->db,
+                           begin_tx,
+                           -1,
+                           &(ctx->begin_tx),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+    const char* commit_tx = "COMMIT TRANSACTION;";
+    if (sqlite3_prepare_v2(ctx->db,
+                           commit_tx,
+                           -1,
+                           &(ctx->commit_tx),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+    const char* rollback_tx = "ROLLBACK TRANSACTION;";
+    if (sqlite3_prepare_v2(ctx->db,
+                           rollback_tx,
+                           -1,
+                           &(ctx->rollback_tx),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+
     return LITESTORE_OK;
 }
 
@@ -168,6 +205,12 @@ int ls_finalize_statements(litestore* ctx)
     ctx->update_type = NULL;
     sqlite3_finalize(ctx->delete_raw_data);
     ctx->delete_raw_data = NULL;
+    sqlite3_finalize(ctx->begin_tx);
+    ctx->begin_tx = NULL;
+    sqlite3_finalize(ctx->commit_tx);
+    ctx->commit_tx = NULL;
+    sqlite3_finalize(ctx->rollback_tx);
+    ctx->rollback_tx = NULL;
 
     return LITESTORE_OK;
 }
@@ -393,10 +436,34 @@ int ls_update_raw_data(litestore* ctx,
     return rv;
 }
 
+int ls_run_stmt(litestore* ctx, sqlite3_stmt* stmt)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && stmt)
+    {
+        if (sqlite3_step(stmt) == SQLITE_DONE)
+        {
+            rv = LITESTORE_OK;
+        }
+        else
+        {
+            ls_print_sqlite_error(ctx);
+        }
+    }
+    sqlite3_reset(stmt);
+
+    return rv;
+}
 
 /*-----------------------------------------*/
 /*------------------ API ------------------*/
 /*-----------------------------------------*/
+
+void* litestore_native_ctx(litestore* ctx)
+{
+    return ctx->db;
+}
 
 int litestore_open(const char* db_file_name, litestore** ctx)
 {
@@ -431,9 +498,19 @@ void litestore_close(litestore* ctx)
     }
 }
 
-void* litestore_native_ctx(litestore* ctx)
+int litestore_begin_tx(litestore* ctx)
 {
-    return ctx->db;
+    return ls_run_stmt(ctx, ctx->begin_tx);
+}
+
+int litestore_commit_tx(litestore* ctx)
+{
+    return ls_run_stmt(ctx, ctx->commit_tx);
+}
+
+int litestore_rollback_tx(litestore* ctx)
+{
+    return ls_run_stmt(ctx, ctx->rollback_tx);
 }
 
 int litestore_get(litestore* ctx,

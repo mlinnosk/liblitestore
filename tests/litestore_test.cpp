@@ -72,9 +72,6 @@ struct LiteStore : Test
           db(NULL),
           key("key"),
           rawData("raw_data")
-    {}
-
-    virtual void SetUp()
     {
         if (litestore_open("/tmp/ls_test.db", &ctx) != LITESTORE_OK)
         {
@@ -82,8 +79,7 @@ struct LiteStore : Test
         }
         db = reinterpret_cast<sqlite3*>(litestore_native_ctx(ctx));
     }
-
-    virtual void TearDown()
+    virtual ~LiteStore()
     {
         dropDB();
         litestore_close(ctx);
@@ -157,6 +153,23 @@ struct LiteStore : Test
     std::string rawData;
 };
 
+struct LiteStoreTx : public LiteStore
+{
+    LiteStoreTx()
+        : LiteStore()
+    {}
+
+    virtual void SetUp()
+    {
+        ASSERT_EQ(LITESTORE_OK, litestore_begin_tx(ctx));
+    }
+
+    virtual void TearDown()
+    {
+        ASSERT_EQ(LITESTORE_OK, litestore_rollback_tx(ctx));
+    }
+};
+
 #define EXPECT_LS_OK(pred) EXPECT_EQ(LITESTORE_OK, pred)
 #define EXPECT_LS_ERR(pred) EXPECT_EQ(LITESTORE_ERR, pred)
 
@@ -166,7 +179,7 @@ TEST_F(LiteStore, open_and_close)
     SUCCEED();
 }
 
-TEST_F(LiteStore, put_saves_null)
+TEST_F(LiteStoreTx, put_saves_null)
 {
     EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
 
@@ -176,13 +189,13 @@ TEST_F(LiteStore, put_saves_null)
     EXPECT_EQ(0, res[0].type);  // LS_NULL
 }
 
-TEST_F(LiteStore, put_fails_for_dupliates)
+TEST_F(LiteStoreTx, put_fails_for_dupliates)
 {
     EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
     EXPECT_LS_ERR(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
 }
 
-TEST_F(LiteStore, put_saves_raw)
+TEST_F(LiteStoreTx, put_saves_raw)
 {
     EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
                                rawData.c_str(), rawData.length()));
@@ -196,14 +209,14 @@ TEST_F(LiteStore, put_saves_raw)
     EXPECT_EQ(res[0].id, res2[0].id);
 }
 
-TEST_F(LiteStore, delete_nulls)
+TEST_F(LiteStoreTx, delete_nulls)
 {
     litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
     EXPECT_LS_OK(litestore_delete(ctx, key.c_str(), key.length()));
     EXPECT_TRUE(readObjects().empty());
 }
 
-TEST_F(LiteStore, delete_raws)
+TEST_F(LiteStoreTx, delete_raws)
 {
     litestore_put(ctx, key.c_str(), key.length(),
                   rawData.c_str(), rawData.length());
@@ -212,7 +225,7 @@ TEST_F(LiteStore, delete_raws)
     EXPECT_TRUE(readRawDatas().empty());
 }
 
-TEST_F(LiteStore, delete_returns_unknown)
+TEST_F(LiteStoreTx, delete_returns_unknown)
 {
     litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
     const std::string foo("foo");
@@ -220,7 +233,7 @@ TEST_F(LiteStore, delete_returns_unknown)
               litestore_delete(ctx, foo.c_str(), foo.length()));
 }
 
-TEST_F(LiteStore, get_null_gives_null)
+TEST_F(LiteStoreTx, get_null_gives_null)
 {
     litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
     char* data = NULL;
@@ -231,7 +244,7 @@ TEST_F(LiteStore, get_null_gives_null)
     EXPECT_EQ(0u, len);
 }
 
-TEST_F(LiteStore, get_raw_gives_data)
+TEST_F(LiteStoreTx, get_raw_gives_data)
 {
     litestore_put(ctx, key.c_str(), key.length(),
                   rawData.c_str(), rawData.length());
@@ -247,18 +260,18 @@ TEST_F(LiteStore, get_raw_gives_data)
     EXPECT_EQ(rawData, res);
 }
 
-TEST_F(LiteStore, get_returns_unknown)
+TEST_F(LiteStoreTx, get_returns_unknown)
 {
     EXPECT_EQ(LITESTORE_UNKNOWN_ENTITY,
               litestore_get(ctx, key.c_str(), key.length(), NULL, 0));
 }
 
-TEST_F(LiteStore, get_with_bad_args)
+TEST_F(LiteStoreTx, get_with_bad_args)
 {
     EXPECT_LS_ERR(litestore_get(ctx, NULL, 0, NULL, 0));
 }
 
-TEST_F(LiteStore, update_null_to_raw_to_null)
+TEST_F(LiteStoreTx, update_null_to_raw_to_null)
 {
     litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
     EXPECT_LS_OK(litestore_update(ctx, key.c_str(), key.length(),
@@ -274,6 +287,28 @@ TEST_F(LiteStore, update_null_to_raw_to_null)
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(0, objs[0].type);
     ASSERT_TRUE(readRawDatas().empty());
+}
+
+TEST_F(LiteStore, transactions_rollback)
+{
+    EXPECT_LS_OK(litestore_begin_tx(ctx));
+    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
+                               NULL, 0));
+    EXPECT_EQ(1u, readObjects().size());
+    EXPECT_LS_OK(litestore_rollback_tx(ctx));
+
+    EXPECT_TRUE(readObjects().empty());
+}
+
+TEST_F(LiteStore, transactions_commit)
+{
+    EXPECT_LS_OK(litestore_begin_tx(ctx));
+    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
+                               NULL, 0));
+    EXPECT_EQ(1u, readObjects().size());
+    EXPECT_LS_OK(litestore_commit_tx(ctx));
+
+    EXPECT_EQ(1u, readObjects().size());
 }
 
 }  // namespace litestore
