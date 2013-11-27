@@ -26,6 +26,7 @@ struct litestore
     sqlite3_stmt* begin_tx;
     sqlite3_stmt* commit_tx;
     sqlite3_stmt* rollback_tx;
+    int tx_active;
 };
 
 /* Possible db.objects.type values */
@@ -456,6 +457,30 @@ int ls_run_stmt(litestore* ctx, sqlite3_stmt* stmt)
     return rv;
 }
 
+/**
+ * @return 1 on success, 0 on error (boolean value)
+ */
+int ls_opt_begin_tx(litestore* ctx)
+{
+    if (!ctx->tx_active && litestore_begin_tx(ctx) == LITESTORE_OK)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * @return Return value of the tx function called.
+ */
+int ls_opt_end_tx(litestore* ctx, int status)
+{
+    if (status == LITESTORE_OK)
+    {
+        return litestore_commit_tx(ctx);
+    }
+    return litestore_rollback_tx(ctx);
+}
+
 /*-----------------------------------------*/
 /*------------------ API ------------------*/
 /*-----------------------------------------*/
@@ -500,17 +525,32 @@ void litestore_close(litestore* ctx)
 
 int litestore_begin_tx(litestore* ctx)
 {
-    return ls_run_stmt(ctx, ctx->begin_tx);
+    const int rv = ls_run_stmt(ctx, ctx->begin_tx);
+    if (rv == LITESTORE_OK)
+    {
+        ctx->tx_active = 1;
+    }
+    return rv;
 }
 
 int litestore_commit_tx(litestore* ctx)
 {
-    return ls_run_stmt(ctx, ctx->commit_tx);
+    const int rv = ls_run_stmt(ctx, ctx->commit_tx);
+    if (rv == LITESTORE_OK)
+    {
+        ctx->tx_active = 0;
+    }
+    return rv;
 }
 
 int litestore_rollback_tx(litestore* ctx)
 {
-    return ls_run_stmt(ctx, ctx->rollback_tx);
+    const int rv = ls_run_stmt(ctx, ctx->rollback_tx);
+    if (rv == LITESTORE_OK)
+    {
+        ctx->tx_active = 0;
+    }
+    return rv;
 }
 
 int litestore_get(litestore* ctx,
@@ -521,6 +561,8 @@ int litestore_get(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
+        int own_tx = ls_opt_begin_tx(ctx);
+
         litestore_id_t id = 0;
         int type = -1;
         rv = ls_get_key_type(ctx, key, key_len, &id, &type);
@@ -548,6 +590,11 @@ int litestore_get(litestore* ctx,
                 break;
             }
         }
+
+        if (own_tx)
+        {
+            ls_opt_end_tx(ctx, rv);
+        }
     }
 
     return rv;
@@ -561,6 +608,8 @@ int litestore_put(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
+        int own_tx = ls_opt_begin_tx(ctx);
+
         const int type = ls_resolve_value_type(value, value_len);
         litestore_id_t new_id = 0;
         rv = ls_put_key(ctx, key, key_len, type, &new_id);
@@ -581,6 +630,11 @@ int litestore_put(litestore* ctx,
                 break;
             }
         }
+
+        if (own_tx)
+        {
+            ls_opt_end_tx(ctx, rv);
+        }
     }
 
     return rv;
@@ -594,11 +648,18 @@ int litestore_put_raw(litestore* ctx,
 
     if (ctx && key && key_len > 0 && value && value_len > 0)
     {
+        int own_tx = ls_opt_begin_tx(ctx);
+
         litestore_id_t new_id = 0;
         rv = ls_put_key(ctx, key, key_len, LS_RAW, &new_id);
         if (rv == LITESTORE_OK)
         {
             rv = ls_put_raw_data(ctx, new_id, value, value_len);
+        }
+
+        if (own_tx)
+        {
+            ls_opt_end_tx(ctx, rv);
         }
     }
 
@@ -612,6 +673,8 @@ int litestore_update(litestore* ctx,
     int rv = LITESTORE_ERR;
     if (ctx && key && key_len > 0)
     {
+        int own_tx = ls_opt_begin_tx(ctx);
+
         litestore_id_t id = 0;
         int old_type = -1;
         rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
@@ -638,6 +701,11 @@ int litestore_update(litestore* ctx,
         {
             rv = litestore_put(ctx, key, key_len, value, value_len);
         }
+
+        if (own_tx)
+        {
+            ls_opt_end_tx(ctx, rv);
+        }
     }
     return rv;
 }
@@ -645,26 +713,42 @@ int litestore_update(litestore* ctx,
 int litestore_delete(litestore* ctx,
                      const char* key, const size_t key_len)
 {
+    int rv = LITESTORE_ERR;
+
     /* delete should cascade */
     if (ctx && key && key_len > 0 && ctx->delete_key)
     {
+        int own_tx = ls_opt_begin_tx(ctx);
+
         sqlite3_reset(ctx->delete_key);
         if (sqlite3_bind_text(ctx->delete_key,
                               1, key, key_len,
-                              SQLITE_STATIC) != SQLITE_OK)
+                              SQLITE_STATIC) == SQLITE_OK)
+        {
+            if (sqlite3_step(ctx->delete_key) == SQLITE_DONE)
+            {
+                rv = (sqlite3_changes(ctx->db) == 1 ?
+                      LITESTORE_OK : LITESTORE_UNKNOWN_ENTITY);
+            }
+            else
+            {
+                ls_print_sqlite_error(ctx);
+                rv = LITESTORE_ERR;
+            }
+        }
+        else
         {
             ls_print_sqlite_error(ctx);
-            return LITESTORE_ERR;
+            rv = LITESTORE_ERR;
         }
-        if (sqlite3_step(ctx->delete_key) != SQLITE_DONE)
+
+        if (own_tx)
         {
-            ls_print_sqlite_error(ctx);
-            return LITESTORE_ERR;
+            ls_opt_end_tx(ctx, rv);
         }
-        return (sqlite3_changes(ctx->db) == 1 ?
-                LITESTORE_OK : LITESTORE_UNKNOWN_ENTITY);
     }
-    return LITESTORE_ERR;
+
+    return rv;
 }
 
 #ifdef __cplusplus
