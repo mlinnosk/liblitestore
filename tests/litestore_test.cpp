@@ -179,6 +179,34 @@ TEST_F(LiteStore, open_and_close)
     SUCCEED();
 }
 
+TEST_F(LiteStore, transactions_rollback)
+{
+    EXPECT_LS_OK(litestore_begin_tx(ctx));
+    EXPECT_EQ(SQLITE_OK,
+              sqlite3_exec(
+                  db,
+                  "INSERT INTO objects (name, type) VALUES (\"foo\", 0);",
+                  NULL, NULL, NULL));
+    EXPECT_EQ(1u, readObjects().size());
+    EXPECT_LS_OK(litestore_rollback_tx(ctx));
+
+    EXPECT_TRUE(readObjects().empty());
+}
+
+TEST_F(LiteStore, transactions_commit)
+{
+    EXPECT_LS_OK(litestore_begin_tx(ctx));
+    EXPECT_EQ(SQLITE_OK,
+              sqlite3_exec(
+                  db,
+                  "INSERT INTO objects (name, type) VALUES (\"foo\", 0);",
+                  NULL, NULL, NULL));
+    EXPECT_EQ(1u, readObjects().size());
+    EXPECT_LS_OK(litestore_commit_tx(ctx));
+
+    EXPECT_EQ(1u, readObjects().size());
+}
+
 TEST_F(LiteStoreTx, put_saves_null)
 {
     EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
@@ -287,28 +315,6 @@ TEST_F(LiteStoreTx, update_null_to_raw_to_null)
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(0, objs[0].type);
     ASSERT_TRUE(readRawDatas().empty());
-}
-
-TEST_F(LiteStore, transactions_rollback)
-{
-    EXPECT_LS_OK(litestore_begin_tx(ctx));
-    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
-                               NULL, 0));
-    EXPECT_EQ(1u, readObjects().size());
-    EXPECT_LS_OK(litestore_rollback_tx(ctx));
-
-    EXPECT_TRUE(readObjects().empty());
-}
-
-TEST_F(LiteStore, transactions_commit)
-{
-    EXPECT_LS_OK(litestore_begin_tx(ctx));
-    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
-                               NULL, 0));
-    EXPECT_EQ(1u, readObjects().size());
-    EXPECT_LS_OK(litestore_commit_tx(ctx));
-
-    EXPECT_EQ(1u, readObjects().size());
 }
 
 }  // namespace litestore
