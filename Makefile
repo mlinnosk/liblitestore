@@ -10,9 +10,9 @@ LIB_NAME = litestore
 TARGET_LIB = liblitestore.so # target lib
 TEST_MAIN = litestore_test
 
-SRCS = src/litestore.c # source files
+SRCS = src/litestore.c src/litestore_data_parser.c # source files
 OBJS = $(SRCS:.c=.o)
-TEST_SRCS = tests/main.cpp tests/litestore_test.cpp
+TEST_SRCS = tests/main.cpp tests/litestore_test.cpp tests/data_parser_test.cpp
 TEST_INC = ./src
 
 .PHONY: all
