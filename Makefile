@@ -18,6 +18,10 @@ TEST_INC = ./src
 .PHONY: all
 all: ${TARGET_LIB}
 
+.PHONY: memtest
+memtest: $(TEST_MAIN)
+	LD_LIBRARY_PATH=. valgrind --tool=memcheck ./$(TEST_MAIN)
+
 .PHONY: test
 test: $(TEST_MAIN)
 	LD_LIBRARY_PATH=. ./$(TEST_MAIN)
