@@ -65,13 +65,31 @@ struct RawDataIdIs
     sqlite3_int64 id;
 };
 
+struct JsonObjectData
+{
+    JsonObjectData(sqlite3_int64 id_,
+                   const std::string& key_,
+                   const std::string& value_)
+        : id(id_),
+          key(key_),
+          value(value_)
+    {}
+    sqlite3_int64 id;
+    std::string key;
+    std::string value;
+};
+typedef std::vector<JsonObjectData> JsonObjectDatas;
+
+
 struct LiteStore : Test
 {
     LiteStore()
         : ctx(NULL),
           db(NULL),
           key("key"),
-          rawData("raw_data")
+          rawData("raw_data"),
+          jsonObject("{\"foo\":\"bar\",\"bar\":1}"),
+          jsonArray("[\"foo\",1,{\"foo\":\"bar\"}]")
     {
         if (litestore_open("/tmp/ls_test.db", &ctx) != LITESTORE_OK)
         {
@@ -146,11 +164,42 @@ struct LiteStore : Test
 
         return results;
     }
+    JsonObjectDatas readJsonObjectDatas()
+    {
+        JsonObjectDatas results;
+        const char* s = "SELECT * FROM object_data;";
+        sqlite3_stmt* stmt = NULL;
+        sqlite3_prepare_v2(db, s, -1, &stmt, NULL);
+
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const char* n =
+                reinterpret_cast<const char*>(
+                    sqlite3_column_blob(stmt, 1));
+            int size = sqlite3_column_bytes(stmt, 1);
+            const std::string key(n, size);
+
+            n = reinterpret_cast<const char*>(
+                sqlite3_column_blob(stmt, 2));
+            size = sqlite3_column_bytes(stmt, 2);
+            const std::string value(n, size);
+
+            results.push_back(
+                JsonObjectData(sqlite3_column_int64(stmt, 0), key, value));
+        }
+        sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
+
+        return results;
+    }
+
 
     litestore* ctx;
     sqlite3* db;
     std::string key;
     std::string rawData;
+    std::string jsonObject;
+    std::string jsonArray;
 };
 
 struct LiteStoreTx : public LiteStore
@@ -315,6 +364,24 @@ TEST_F(LiteStoreTx, update_null_to_raw_to_null)
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(0, objs[0].type);
     ASSERT_TRUE(readRawDatas().empty());
+}
+
+TEST_F(LiteStoreTx, put_saves_json_object)
+{
+    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
+                               jsonObject.c_str(), jsonObject.length()));
+
+    const Objects res = readObjects();
+    ASSERT_EQ(1u, res.size());
+    EXPECT_EQ(key, res[0].name);
+    EXPECT_EQ(5, res[0].type);  // LS_OBJECT
+
+    const JsonObjectDatas datas = readJsonObjectDatas();
+    ASSERT_EQ(2u, datas.size());
+    EXPECT_EQ("\"foo\"", datas[0].key);
+    EXPECT_EQ("\"bar\"", datas[0].value);
+    EXPECT_EQ("\"bar\"", datas[1].key);
+    EXPECT_EQ("1", datas[1].value);
 }
 
 }  // namespace litestore

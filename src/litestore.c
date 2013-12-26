@@ -28,6 +28,7 @@ struct litestore
     sqlite3_stmt* begin_tx;
     sqlite3_stmt* commit_tx;
     sqlite3_stmt* rollback_tx;
+    sqlite3_stmt* save_obj_data;
     int tx_active;
 };
 
@@ -188,6 +189,19 @@ int ls_prepare_statements(litestore* ctx)
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
+    const char* save_obj_data =
+        "INSERT OR REPLACE INTO object_data (id, json_key, json_value) "
+        "VALUES (?, ?, ?);";
+    if (sqlite3_prepare_v2(ctx->db,
+                           save_obj_data,
+                           -1,
+                           &(ctx->save_obj_data),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
 
     return LITESTORE_OK;
 }
@@ -214,6 +228,8 @@ int ls_finalize_statements(litestore* ctx)
     ctx->commit_tx = NULL;
     sqlite3_finalize(ctx->rollback_tx);
     ctx->rollback_tx = NULL;
+    sqlite3_finalize(ctx->save_obj_data);
+    ctx->save_obj_data = NULL;
 
     return LITESTORE_OK;
 }
@@ -222,15 +238,14 @@ int ls_resolve_value_type(const char* value, const size_t value_len)
 {
     int type = LS_NULL;
 
-    if (!value || value_len == 0)
+    if (value && value_len > 0)
     {
-        type = LS_NULL;
+        if (litestore_data_parse_get_type(value, value_len, &type)
+            != LITESTORE_OK)
+        {
+            type = LS_RAW;
+        }
     }
-    else if (value && value_len)
-    {
-        return LS_RAW;
-    }
-    /* @todo */
 
     return type;
 }
@@ -293,6 +308,56 @@ int ls_put_raw_data(litestore* ctx,
             return LITESTORE_ERR;
         }
         return LITESTORE_OK;
+    }
+    return LITESTORE_ERR;
+}
+
+/**
+ * Struct to pass as the parser user data.
+ */
+typedef struct
+{
+    litestore_id_t id;
+    litestore* ctx;
+} id_ctx_t;
+
+/* called from the parser */
+void ls_put_obj_cb(const char* key, const size_t key_len,
+                   const char* data, const size_t data_len,
+                   void* user_data)
+{
+    const litestore_id_t id = ((id_ctx_t*)user_data)->id;
+    litestore* ctx = ((id_ctx_t*)user_data)->ctx;
+
+    sqlite3_reset(ctx->save_obj_data);
+    if (sqlite3_bind_int64(ctx->save_obj_data, 1, id)
+        != SQLITE_OK
+        || sqlite3_bind_blob(ctx->save_obj_data,
+                             2, key, key_len,
+                             SQLITE_STATIC)
+        != SQLITE_OK
+        || sqlite3_bind_blob(ctx->save_obj_data,
+                             3, data, data_len,
+                             SQLITE_STATIC)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+    }
+    if (sqlite3_step(ctx->save_obj_data) != SQLITE_DONE)
+    {
+        ls_print_sqlite_error(ctx);
+    }
+}
+
+int ls_put_object_data(litestore* ctx,
+                       const litestore_id_t new_id,
+                       const char* value, const size_t value_len)
+{
+    if (ctx->save_obj_data)
+    {
+        id_ctx_t id_ctx = {new_id, ctx};
+        litestore_parser_ctx pctx = {NULL, &ls_put_obj_cb, &id_ctx};
+        return litestore_data_parse(value, value_len, pctx);
     }
     return LITESTORE_ERR;
 }
@@ -630,6 +695,11 @@ int litestore_put(litestore* ctx,
                     rv = ls_put_raw_data(ctx, new_id, value, value_len);
                 }
                 break;
+
+                case LS_OBJECT:
+                {
+                    rv = ls_put_object_data(ctx, new_id, value, value_len);
+                }
             }
         }
 
