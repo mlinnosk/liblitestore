@@ -62,6 +62,40 @@ struct DataParserTest : Test
 #define ASSERT_LS_OK(pred) ASSERT_EQ(LITESTORE_OK, pred)
 #define EXPECT_LS_ERR(pred) EXPECT_EQ(LITESTORE_ERR, pred)
 
+TEST_F(DataParserTest, parse_type_works_on_good_input)
+{
+    int type = -1;
+
+    std::string str("{\"foo\" : \"bar\", \"bar\": 1, \"a\":\"\"}");
+    ASSERT_LS_OK(litestore_data_parse_get_type(str.c_str(), str.length(),
+                                               &type));
+    EXPECT_EQ(LS_DP_OBJ, type);
+
+    str = "[{\"foo\" : \"bar\"}, \"bar\" , 1 \n  ]";
+    ASSERT_LS_OK(litestore_data_parse_get_type(str.c_str(), str.length(),
+                                               &type));
+    EXPECT_EQ(LS_DP_ARRAY, type);
+
+    str = "{  }";
+    ASSERT_LS_OK(litestore_data_parse_get_type(str.c_str(), str.length(),
+                                               &type));
+    EXPECT_EQ(LS_DP_EMPTY_OBJ, type);
+
+    str = "[  ]";
+    ASSERT_LS_OK(litestore_data_parse_get_type(str.c_str(), str.length(),
+                                               &type));
+    EXPECT_EQ(LS_DP_EMPTY_ARRAY, type);
+}
+
+TEST_F(DataParserTest, get_type_returns_error)
+{
+    std::string str("foo");
+    EXPECT_LS_ERR(litestore_data_parse_get_type(str.c_str(), str.length(),
+                                                NULL));
+    str = "";
+    EXPECT_LS_ERR(litestore_data_parse_get_type(str.c_str(), str.length(),
+                                                NULL));
+}
 
 TEST_F(DataParserTest, parses_objects)
 {

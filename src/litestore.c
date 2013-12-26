@@ -6,6 +6,8 @@
 
 #include <sqlite3.h>
 
+#include "litestore_data_parser.h"
+
 #ifdef __cplusplus
 extern "C"
 #endif
@@ -33,11 +35,11 @@ struct litestore
 enum
 {
     LS_NULL = 0,
-    LS_RAW,
-    LS_EMPTY_ARRAY,
-    LS_EMPTY_OBJECT,
-    LS_ARRAY,
-    LS_OBJECT
+    LS_RAW = 1,
+    LS_EMPTY_ARRAY = LS_DP_EMPTY_ARRAY,
+    LS_EMPTY_OBJECT = LS_DP_EMPTY_OBJ,
+    LS_ARRAY = LS_DP_ARRAY,
+    LS_OBJECT = LS_DP_OBJ
 };
 
 /* The native db ID type */

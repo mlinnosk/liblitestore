@@ -11,33 +11,6 @@
 #define OPEN_OBJ '{'
 #define CLOSE_OBJ '}'
 
-/**
- * Data types.
- */
-enum
-{
-    LS_DP_ARRAY = 0,
-    LS_DP_OBJ = 1
-};
-
-/**
- * @return -1 on error
- */
-int is_obj_or_array(const char* data, const size_t data_len)
-{
-    const char f = *data;
-    const char e = data[data_len - 1];
-    if ((f == OPEN_ARR && e == CLOSE_ARR))
-    {
-        return LS_DP_ARRAY;
-    }
-    if ((f == OPEN_OBJ && e == CLOSE_OBJ))
-    {
-        return LS_DP_OBJ;
-    }
-    return -1;
-}
-
 const char* trim(const char* data, size_t* data_len)
 {
     size_t len = *data_len;
@@ -174,6 +147,60 @@ int parse_obj(const char* data, const size_t data_len,
     return rv;
 }
 
+/**
+ * Check if [beg, end[ has onlu white spaces.
+ * @return true / false
+ */
+int is_empty_range(const char* beg, const char* end)
+{
+    while (beg != end)
+    {
+        if (!isspace(*beg))
+        {
+            return 0;
+        }
+        ++beg;
+    }
+    return 1;
+}
+
+int litestore_data_parse_get_type(const char* data, const size_t data_len,
+                                  int* type)
+{
+    int rv = LITESTORE_ERR;
+
+    if (data && data_len > 0)
+    {
+        const char f = *data;
+        const char e = data[data_len - 1];
+        if (f == OPEN_ARR && e == CLOSE_ARR)
+        {
+            if (is_empty_range(data + 1, data + data_len - 1))
+            {
+                *type = LS_DP_EMPTY_ARRAY;
+            }
+            else
+            {
+                *type = LS_DP_ARRAY;
+            }
+            rv = LITESTORE_OK;
+        }
+        if (f == OPEN_OBJ && e == CLOSE_OBJ)
+        {
+            if (is_empty_range(data + 1, data + data_len - 1))
+            {
+                *type = LS_DP_EMPTY_OBJ;
+            }
+            else
+            {
+                *type = LS_DP_OBJ;
+            }
+            rv = LITESTORE_OK;
+        }
+    }
+    return rv;
+}
+
 int litestore_data_parse(const char* data, const size_t data_len,
                          litestore_parser_ctx ctx)
 {
@@ -181,12 +208,13 @@ int litestore_data_parse(const char* data, const size_t data_len,
 
     if (data && data_len > 0)
     {
-        const int res = is_obj_or_array(data, data_len);
-        if (res == LS_DP_ARRAY)
+        int type = -1;
+        litestore_data_parse_get_type(data, data_len, &type);
+        if (type == LS_DP_ARRAY)
         {
             rv = parse_array(data, data_len, &ctx);
         }
-        else if (res == LS_DP_OBJ)
+        else if (type == LS_DP_OBJ)
         {
             rv = parse_obj(data, data_len, &ctx);
         }

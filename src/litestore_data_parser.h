@@ -43,7 +43,28 @@ typedef struct
     void* user_data;
 } litestore_parser_ctx;
 
+/**
+ * Data types.
+ */
+enum
+{
+    LS_DP_EMPTY_ARRAY = 2,
+    LS_DP_EMPTY_OBJ = 3,
+    LS_DP_ARRAY = 4,
+    LS_DP_OBJ = 5
+};
 
+/**
+ * Determine data type.
+ *
+ * @param data String data.
+ * @param data_len Length of the data.
+ * @param type Output, the type.
+ * @return LITESTORE_OK on success.
+ *         LITESTORE_ERR on error.
+ */
+int litestore_data_parse_get_type(const char* data, const size_t data_len,
+                                  int* type);
 /**
  * Parser function for data such as Json.
  *
