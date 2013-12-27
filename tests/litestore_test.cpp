@@ -256,9 +256,9 @@ TEST_F(LiteStore, transactions_commit)
     EXPECT_EQ(1u, readObjects().size());
 }
 
-TEST_F(LiteStoreTx, put_null_saves)
+TEST_F(LiteStoreTx, save_null_saves)
 {
-    EXPECT_LS_OK(litestore_put_null(ctx, key.c_str(), key.length()));
+    EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
 
     const Objects res = readObjects();
     ASSERT_EQ(1u, res.size());
@@ -266,16 +266,16 @@ TEST_F(LiteStoreTx, put_null_saves)
     EXPECT_EQ(0, res[0].type);  // LS_NULL
 }
 
-TEST_F(LiteStoreTx, put_null_fails_for_dupliates)
+TEST_F(LiteStoreTx, save_null_fails_for_dupliates)
 {
-    EXPECT_LS_OK(litestore_put_null(ctx, key.c_str(), key.length()));
-    EXPECT_LS_ERR(litestore_put_null(ctx, key.c_str(), key.length()));
+    EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
+    EXPECT_LS_ERR(litestore_save_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreTx, put_raw_saves)
+TEST_F(LiteStoreTx, save_raw_saves)
 {
-    EXPECT_LS_OK(litestore_put_raw(ctx, key.c_str(), key.length(),
-                                   rawData.c_str(), rawData.length()));
+    EXPECT_LS_OK(litestore_save_raw(ctx, key.c_str(), key.length(),
+                                    rawData.c_str(), rawData.length()));
 
     const Objects res = readObjects();
     ASSERT_EQ(1u, res.size());
@@ -288,15 +288,15 @@ TEST_F(LiteStoreTx, put_raw_saves)
 
 TEST_F(LiteStoreTx, delete_nulls)
 {
-    litestore_put_null(ctx, key.c_str(), key.length());
+    litestore_save_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_delete(ctx, key.c_str(), key.length()));
     EXPECT_TRUE(readObjects().empty());
 }
 
 TEST_F(LiteStoreTx, delete_raws)
 {
-    litestore_put_raw(ctx, key.c_str(), key.length(),
-                      rawData.c_str(), rawData.length());
+    litestore_save_raw(ctx, key.c_str(), key.length(),
+                       rawData.c_str(), rawData.length());
     EXPECT_LS_OK(litestore_delete(ctx, key.c_str(), key.length()));
     EXPECT_TRUE(readObjects().empty());
     EXPECT_TRUE(readRawDatas().empty());
@@ -304,7 +304,7 @@ TEST_F(LiteStoreTx, delete_raws)
 
 TEST_F(LiteStoreTx, delete_returns_unknown)
 {
-    litestore_put_null(ctx, key.c_str(), key.length());
+    litestore_save_null(ctx, key.c_str(), key.length());
     const std::string foo("foo");
     EXPECT_EQ(LITESTORE_UNKNOWN_ENTITY,
               litestore_delete(ctx, foo.c_str(), foo.length()));
@@ -312,7 +312,7 @@ TEST_F(LiteStoreTx, delete_returns_unknown)
 
 TEST_F(LiteStoreTx, get_null_gives_null)
 {
-    litestore_put_null(ctx, key.c_str(), key.length());
+    litestore_save_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_get_null(ctx, key.c_str(), key.length()));
 }
 
@@ -320,8 +320,8 @@ TEST_F(LiteStoreTx, get_null_gives_null)
 
 TEST_F(LiteStoreTx, get_raw_gives_data)
 {
-    litestore_put_raw(ctx, key.c_str(), key.length(),
-                      rawData.c_str(), rawData.length());
+    litestore_save_raw(ctx, key.c_str(), key.length(),
+                       rawData.c_str(), rawData.length());
     char* data = NULL;
     std::size_t len = 0;
     EXPECT_LS_OK(litestore_get_raw(ctx, key.c_str(), key.length(),
@@ -347,7 +347,7 @@ TEST_F(LiteStoreTx, get_null_with_bad_args)
 
 TEST_F(LiteStoreTx, update_null_to_raw_to_null)
 {
-    litestore_put_null(ctx, key.c_str(), key.length());
+    litestore_save_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_update_raw(ctx, key.c_str(), key.length(),
                                       rawData.c_str(), rawData.length()));
     Objects objs = readObjects();
@@ -362,9 +362,9 @@ TEST_F(LiteStoreTx, update_null_to_raw_to_null)
     ASSERT_TRUE(readRawDatas().empty());
 }
 
-// TEST_F(LiteStoreTx, put_saves_json_object)
+// TEST_F(LiteStoreTx, save_saves_json_object)
 // {
-//     EXPECT_LS_OK(litestore_put_kv(ctx, key.c_str(), key.length(),
+//     EXPECT_LS_OK(litestore_save_kv(ctx, key.c_str(), key.length(),
 //                                   jsonObject.c_str(),
 //                                   jsonObject.length()));
 

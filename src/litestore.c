@@ -17,19 +17,19 @@ extern "C"
  */
 struct litestore
 {
-    sqlite3* db;
-    sqlite3_stmt* save_key;
-    sqlite3_stmt* save_raw_data;
-    sqlite3_stmt* delete_key;
-    sqlite3_stmt* get_key;
-    sqlite3_stmt* get_raw_data;
-    sqlite3_stmt* update_type;
-    sqlite3_stmt* delete_raw_data;
-    sqlite3_stmt* begin_tx;
-    sqlite3_stmt* commit_tx;
-    sqlite3_stmt* rollback_tx;
-    sqlite3_stmt* save_obj_data;
-    int tx_active;
+sqlite3* db;
+sqlite3_stmt* save_key;
+sqlite3_stmt* save_raw_data;
+sqlite3_stmt* delete_key;
+sqlite3_stmt* get_key;
+sqlite3_stmt* get_raw_data;
+sqlite3_stmt* update_type;
+sqlite3_stmt* delete_raw_data;
+sqlite3_stmt* begin_tx;
+sqlite3_stmt* commit_tx;
+sqlite3_stmt* rollback_tx;
+sqlite3_stmt* save_obj_data;
+int tx_active;
 };
 
 /* Possible db.objects.type values */
@@ -239,10 +239,10 @@ int ls_finalize_statements(litestore* ctx)
 /*----------------- SAVE ------------------*/
 /*-----------------------------------------*/
 
-int ls_put_key(litestore* ctx,
-               const char* key, const size_t key_len,
-               const int data_type,
-               litestore_id_t* id)
+int ls_save_key(litestore* ctx,
+                const char* key, const size_t key_len,
+                const int data_type,
+                litestore_id_t* id)
 {
     if (ctx->save_key)
     {
@@ -270,9 +270,9 @@ int ls_put_key(litestore* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_put_raw_data(litestore* ctx,
-                    const litestore_id_t new_id,
-                    const char* value, const size_t value_len)
+int ls_save_raw_data(litestore* ctx,
+                     const litestore_id_t new_id,
+                     const char* value, const size_t value_len)
 {
     if (ctx->save_raw_data)
     {
@@ -307,7 +307,7 @@ int ls_put_raw_data(litestore* ctx,
 /* } id_ctx_t; */
 
 /* /\* called from the parser *\/ */
-/* void ls_put_obj_cb(const char* key, const size_t key_len, */
+/* void ls_save_obj_cb(const char* key, const size_t key_len, */
 /*                    const char* data, const size_t data_len, */
 /*                    void* user_data) */
 /* { */
@@ -334,14 +334,14 @@ int ls_put_raw_data(litestore* ctx,
 /*     } */
 /* } */
 
-/* int ls_put_object_data(litestore* ctx, */
+/* int ls_save_object_data(litestore* ctx, */
 /*                        const litestore_id_t new_id, */
 /*                        const char* value, const size_t value_len) */
 /* { */
 /*     if (ctx->save_obj_data) */
 /*     { */
 /*         id_ctx_t id_ctx = {new_id, ctx}; */
-/*         litestore_parser_ctx pctx = {NULL, &ls_put_obj_cb, &id_ctx}; */
+/*         litestore_parser_ctx pctx = {NULL, &ls_save_obj_cb, &id_ctx}; */
 /*         return litestore_data_parse(value, value_len, pctx); */
 /*     } */
 /*     return LITESTORE_ERR; */
@@ -482,7 +482,7 @@ int ls_update_raw_data(litestore* ctx,
     {
         case LS_NULL:
         case LS_RAW:
-            rv = ls_put_raw_data(ctx, id, value, value_len);
+            rv = ls_save_raw_data(ctx, id, value, value_len);
             break;
     }
 
@@ -632,8 +632,8 @@ int litestore_get_null(litestore* ctx,
     return rv;
 }
 
-int litestore_put_null(litestore* ctx,
-                       const char* key, const size_t key_len)
+int litestore_save_null(litestore* ctx,
+                        const char* key, const size_t key_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -642,7 +642,7 @@ int litestore_put_null(litestore* ctx,
         int own_tx = ls_opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = ls_put_key(ctx, key, key_len, LS_NULL, &new_id);
+        rv = ls_save_key(ctx, key, key_len, LS_NULL, &new_id);
 
         if (own_tx)
         {
@@ -674,7 +674,7 @@ int litestore_update_null(litestore* ctx,
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
         {
-            rv = litestore_put_null(ctx, key, key_len);
+            rv = litestore_save_null(ctx, key, key_len);
         }
 
         if (own_tx)
@@ -717,9 +717,9 @@ int litestore_get_raw(litestore* ctx,
     return rv;
 }
 
-int litestore_put_raw(litestore* ctx,
-                      const char* key, const size_t key_len,
-                      const char* value, const size_t value_len)
+int litestore_save_raw(litestore* ctx,
+                       const char* key, const size_t key_len,
+                       const char* value, const size_t value_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -728,10 +728,10 @@ int litestore_put_raw(litestore* ctx,
         int own_tx = ls_opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = ls_put_key(ctx, key, key_len, LS_RAW, &new_id);
+        rv = ls_save_key(ctx, key, key_len, LS_RAW, &new_id);
         if (rv == LITESTORE_OK)
         {
-            rv = ls_put_raw_data(ctx, new_id, value, value_len);
+            rv = ls_save_raw_data(ctx, new_id, value, value_len);
         }
 
         if (own_tx)
@@ -767,7 +767,7 @@ int litestore_update_raw(litestore* ctx,
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
         {
-            rv = litestore_put_raw(ctx, key, key_len, value, value_len);
+            rv = litestore_save_raw(ctx, key, key_len, value, value_len);
         }
 
         if (own_tx)

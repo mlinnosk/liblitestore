@@ -54,8 +54,8 @@ int litestore_get_null(litestore* ctx,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_put_null(litestore* ctx,
-                       const char* key, const size_t key_len);
+int litestore_save_null(litestore* ctx,
+                        const char* key, const size_t key_len);
 /**
  * Update an object to have type of 'null'.
  * Efectively will delete other data if the the type is other than null.
@@ -108,9 +108,9 @@ int litestore_get_raw(litestore* ctx,
  * @return LITESTORE_OK on success
  *         LITESTORE_ERR on error.
  */
-int litestore_put_raw(litestore* ctx,
-                      const char* key, const size_t key_len,
-                      const char* value, const size_t value_len);
+int litestore_save_raw(litestore* ctx,
+                       const char* key, const size_t key_len,
+                       const char* value, const size_t value_len);
 
 /**
  * Update existing value with new 'raw' data.
