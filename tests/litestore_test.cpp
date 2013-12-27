@@ -256,9 +256,9 @@ TEST_F(LiteStore, transactions_commit)
     EXPECT_EQ(1u, readObjects().size());
 }
 
-TEST_F(LiteStoreTx, put_saves_null)
+TEST_F(LiteStoreTx, put_null_saves)
 {
-    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
+    EXPECT_LS_OK(litestore_put_null(ctx, key.c_str(), key.length()));
 
     const Objects res = readObjects();
     ASSERT_EQ(1u, res.size());
@@ -266,16 +266,16 @@ TEST_F(LiteStoreTx, put_saves_null)
     EXPECT_EQ(0, res[0].type);  // LS_NULL
 }
 
-TEST_F(LiteStoreTx, put_fails_for_dupliates)
+TEST_F(LiteStoreTx, put_null_fails_for_dupliates)
 {
-    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
-    EXPECT_LS_ERR(litestore_put(ctx, key.c_str(), key.length(), NULL, 0));
+    EXPECT_LS_OK(litestore_put_null(ctx, key.c_str(), key.length()));
+    EXPECT_LS_ERR(litestore_put_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreTx, put_saves_raw)
+TEST_F(LiteStoreTx, put_raw_saves)
 {
-    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
-                               rawData.c_str(), rawData.length()));
+    EXPECT_LS_OK(litestore_put_raw(ctx, key.c_str(), key.length(),
+                                   rawData.c_str(), rawData.length()));
 
     const Objects res = readObjects();
     ASSERT_EQ(1u, res.size());
@@ -288,15 +288,15 @@ TEST_F(LiteStoreTx, put_saves_raw)
 
 TEST_F(LiteStoreTx, delete_nulls)
 {
-    litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
+    litestore_put_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_delete(ctx, key.c_str(), key.length()));
     EXPECT_TRUE(readObjects().empty());
 }
 
 TEST_F(LiteStoreTx, delete_raws)
 {
-    litestore_put(ctx, key.c_str(), key.length(),
-                  rawData.c_str(), rawData.length());
+    litestore_put_raw(ctx, key.c_str(), key.length(),
+                      rawData.c_str(), rawData.length());
     EXPECT_LS_OK(litestore_delete(ctx, key.c_str(), key.length()));
     EXPECT_TRUE(readObjects().empty());
     EXPECT_TRUE(readRawDatas().empty());
@@ -304,7 +304,7 @@ TEST_F(LiteStoreTx, delete_raws)
 
 TEST_F(LiteStoreTx, delete_returns_unknown)
 {
-    litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
+    litestore_put_null(ctx, key.c_str(), key.length());
     const std::string foo("foo");
     EXPECT_EQ(LITESTORE_UNKNOWN_ENTITY,
               litestore_delete(ctx, foo.c_str(), foo.length()));
@@ -312,23 +312,20 @@ TEST_F(LiteStoreTx, delete_returns_unknown)
 
 TEST_F(LiteStoreTx, get_null_gives_null)
 {
-    litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
-    char* data = NULL;
-    size_t len = 0;
-    EXPECT_LS_OK(litestore_get(ctx, key.c_str(), key.length(),
-                               &data, &len));
-    EXPECT_EQ(NULL, data);
-    EXPECT_EQ(0u, len);
+    litestore_put_null(ctx, key.c_str(), key.length());
+    EXPECT_LS_OK(litestore_get_null(ctx, key.c_str(), key.length()));
 }
+
+// @todo test unknown return for wrong types etc.
 
 TEST_F(LiteStoreTx, get_raw_gives_data)
 {
-    litestore_put(ctx, key.c_str(), key.length(),
-                  rawData.c_str(), rawData.length());
+    litestore_put_raw(ctx, key.c_str(), key.length(),
+                      rawData.c_str(), rawData.length());
     char* data = NULL;
     std::size_t len = 0;
-    EXPECT_LS_OK(litestore_get(ctx, key.c_str(), key.length(),
-                               &data, &len));
+    EXPECT_LS_OK(litestore_get_raw(ctx, key.c_str(), key.length(),
+                                   &data, &len));
     ASSERT_TRUE(data);
     ASSERT_TRUE(len > 0);
     const std::string res(data, len);
@@ -337,51 +334,51 @@ TEST_F(LiteStoreTx, get_raw_gives_data)
     EXPECT_EQ(rawData, res);
 }
 
-TEST_F(LiteStoreTx, get_returns_unknown)
+TEST_F(LiteStoreTx, get_null_returns_unknown)
 {
     EXPECT_EQ(LITESTORE_UNKNOWN_ENTITY,
-              litestore_get(ctx, key.c_str(), key.length(), NULL, 0));
+              litestore_get_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreTx, get_with_bad_args)
+TEST_F(LiteStoreTx, get_null_with_bad_args)
 {
-    EXPECT_LS_ERR(litestore_get(ctx, NULL, 0, NULL, 0));
+    EXPECT_LS_ERR(litestore_get_null(ctx, NULL, 0));
 }
 
 TEST_F(LiteStoreTx, update_null_to_raw_to_null)
 {
-    litestore_put(ctx, key.c_str(), key.length(), NULL, 0);
-    EXPECT_LS_OK(litestore_update(ctx, key.c_str(), key.length(),
-                                  rawData.c_str(), rawData.length()));
+    litestore_put_null(ctx, key.c_str(), key.length());
+    EXPECT_LS_OK(litestore_update_raw(ctx, key.c_str(), key.length(),
+                                      rawData.c_str(), rawData.length()));
     Objects objs = readObjects();
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(1, objs[0].type);
     ASSERT_EQ(1u, readRawDatas().size());
 
-    EXPECT_LS_OK(litestore_update(ctx, key.c_str(), key.length(),
-                                  NULL, 0));
+    EXPECT_LS_OK(litestore_update_null(ctx, key.c_str(), key.length()));
     objs = readObjects();
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(0, objs[0].type);
     ASSERT_TRUE(readRawDatas().empty());
 }
 
-TEST_F(LiteStoreTx, put_saves_json_object)
-{
-    EXPECT_LS_OK(litestore_put(ctx, key.c_str(), key.length(),
-                               jsonObject.c_str(), jsonObject.length()));
+// TEST_F(LiteStoreTx, put_saves_json_object)
+// {
+//     EXPECT_LS_OK(litestore_put_kv(ctx, key.c_str(), key.length(),
+//                                   jsonObject.c_str(),
+//                                   jsonObject.length()));
 
-    const Objects res = readObjects();
-    ASSERT_EQ(1u, res.size());
-    EXPECT_EQ(key, res[0].name);
-    EXPECT_EQ(5, res[0].type);  // LS_OBJECT
+//     const Objects res = readObjects();
+//     ASSERT_EQ(1u, res.size());
+//     EXPECT_EQ(key, res[0].name);
+//     EXPECT_EQ(5, res[0].type);  // LS_OBJECT
 
-    const JsonObjectDatas datas = readJsonObjectDatas();
-    ASSERT_EQ(2u, datas.size());
-    EXPECT_EQ("\"foo\"", datas[0].key);
-    EXPECT_EQ("\"bar\"", datas[0].value);
-    EXPECT_EQ("\"bar\"", datas[1].key);
-    EXPECT_EQ("1", datas[1].value);
-}
+//     const JsonObjectDatas datas = readJsonObjectDatas();
+//     ASSERT_EQ(2u, datas.size());
+//     EXPECT_EQ("\"foo\"", datas[0].key);
+//     EXPECT_EQ("\"bar\"", datas[0].value);
+//     EXPECT_EQ("\"bar\"", datas[1].key);
+//     EXPECT_EQ("1", datas[1].value);
+// }
 
 }  // namespace litestore

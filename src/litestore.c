@@ -234,21 +234,6 @@ int ls_finalize_statements(litestore* ctx)
     return LITESTORE_OK;
 }
 
-int ls_resolve_value_type(const char* value, const size_t value_len)
-{
-    int type = LS_NULL;
-
-    if (value && value_len > 0)
-    {
-        if (litestore_data_parse_get_type(value, value_len, &type)
-            != LITESTORE_OK)
-        {
-            type = LS_RAW;
-        }
-    }
-
-    return type;
-}
 
 /*-----------------------------------------*/
 /*----------------- SAVE ------------------*/
@@ -315,52 +300,52 @@ int ls_put_raw_data(litestore* ctx,
 /**
  * Struct to pass as the parser user data.
  */
-typedef struct
-{
-    litestore_id_t id;
-    litestore* ctx;
-} id_ctx_t;
+/* typedef struct */
+/* { */
+/*     litestore_id_t id; */
+/*     litestore* ctx; */
+/* } id_ctx_t; */
 
-/* called from the parser */
-void ls_put_obj_cb(const char* key, const size_t key_len,
-                   const char* data, const size_t data_len,
-                   void* user_data)
-{
-    const litestore_id_t id = ((id_ctx_t*)user_data)->id;
-    litestore* ctx = ((id_ctx_t*)user_data)->ctx;
+/* /\* called from the parser *\/ */
+/* void ls_put_obj_cb(const char* key, const size_t key_len, */
+/*                    const char* data, const size_t data_len, */
+/*                    void* user_data) */
+/* { */
+/*     const litestore_id_t id = ((id_ctx_t*)user_data)->id; */
+/*     litestore* ctx = ((id_ctx_t*)user_data)->ctx; */
 
-    sqlite3_reset(ctx->save_obj_data);
-    if (sqlite3_bind_int64(ctx->save_obj_data, 1, id)
-        != SQLITE_OK
-        || sqlite3_bind_blob(ctx->save_obj_data,
-                             2, key, key_len,
-                             SQLITE_STATIC)
-        != SQLITE_OK
-        || sqlite3_bind_blob(ctx->save_obj_data,
-                             3, data, data_len,
-                             SQLITE_STATIC)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-    }
-    if (sqlite3_step(ctx->save_obj_data) != SQLITE_DONE)
-    {
-        ls_print_sqlite_error(ctx);
-    }
-}
+/*     sqlite3_reset(ctx->save_obj_data); */
+/*     if (sqlite3_bind_int64(ctx->save_obj_data, 1, id) */
+/*         != SQLITE_OK */
+/*         || sqlite3_bind_blob(ctx->save_obj_data, */
+/*                              2, key, key_len, */
+/*                              SQLITE_STATIC) */
+/*         != SQLITE_OK */
+/*         || sqlite3_bind_blob(ctx->save_obj_data, */
+/*                              3, data, data_len, */
+/*                              SQLITE_STATIC) */
+/*         != SQLITE_OK) */
+/*     { */
+/*         ls_print_sqlite_error(ctx); */
+/*     } */
+/*     if (sqlite3_step(ctx->save_obj_data) != SQLITE_DONE) */
+/*     { */
+/*         ls_print_sqlite_error(ctx); */
+/*     } */
+/* } */
 
-int ls_put_object_data(litestore* ctx,
-                       const litestore_id_t new_id,
-                       const char* value, const size_t value_len)
-{
-    if (ctx->save_obj_data)
-    {
-        id_ctx_t id_ctx = {new_id, ctx};
-        litestore_parser_ctx pctx = {NULL, &ls_put_obj_cb, &id_ctx};
-        return litestore_data_parse(value, value_len, pctx);
-    }
-    return LITESTORE_ERR;
-}
+/* int ls_put_object_data(litestore* ctx, */
+/*                        const litestore_id_t new_id, */
+/*                        const char* value, const size_t value_len) */
+/* { */
+/*     if (ctx->save_obj_data) */
+/*     { */
+/*         id_ctx_t id_ctx = {new_id, ctx}; */
+/*         litestore_parser_ctx pctx = {NULL, &ls_put_obj_cb, &id_ctx}; */
+/*         return litestore_data_parse(value, value_len, pctx); */
+/*     } */
+/*     return LITESTORE_ERR; */
+/* } */
 
 /*-----------------------------------------*/
 /*----------------- GET -------------------*/
@@ -620,9 +605,8 @@ int litestore_rollback_tx(litestore* ctx)
     return rv;
 }
 
-int litestore_get(litestore* ctx,
-                  const char* key, const size_t key_len,
-                  char** value, size_t* value_len)
+int litestore_get_null(litestore* ctx,
+                       const char* key, const size_t key_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -633,29 +617,10 @@ int litestore_get(litestore* ctx,
         litestore_id_t id = 0;
         int type = -1;
         rv = ls_get_key_type(ctx, key, key_len, &id, &type);
-        if (rv == LITESTORE_OK)
+
+        if (rv == LITESTORE_OK && type != LS_NULL)
         {
-            switch (type)
-            {
-                case LS_NULL:
-                {
-                    if (value)
-                    {
-                        *value = NULL;
-                    }
-                    if (value_len)
-                    {
-                        *value_len = 0;
-                    }
-                    rv = LITESTORE_OK;
-                }
-                break;
-                case LS_RAW:
-                {
-                    rv = ls_get_raw_data(ctx, id, value, value_len);
-                }
-                break;
-            }
+            rv = LITESTORE_ERR;
         }
 
         if (own_tx)
@@ -667,9 +632,8 @@ int litestore_get(litestore* ctx,
     return rv;
 }
 
-int litestore_put(litestore* ctx,
-                  const char* key, const size_t key_len,
-                  const char* value, const size_t value_len)
+int litestore_put_null(litestore* ctx,
+                       const char* key, const size_t key_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -677,30 +641,71 @@ int litestore_put(litestore* ctx,
     {
         int own_tx = ls_opt_begin_tx(ctx);
 
-        const int type = ls_resolve_value_type(value, value_len);
         litestore_id_t new_id = 0;
-        rv = ls_put_key(ctx, key, key_len, type, &new_id);
+        rv = ls_put_key(ctx, key, key_len, LS_NULL, &new_id);
+
+        if (own_tx)
+        {
+            ls_opt_end_tx(ctx, rv);
+        }
+    }
+
+    return rv;
+}
+
+int litestore_update_null(litestore* ctx,
+                          const char* key, const size_t key_len)
+{
+    int rv = LITESTORE_ERR;
+    if (ctx && key && key_len > 0)
+    {
+        int own_tx = ls_opt_begin_tx(ctx);
+
+        litestore_id_t id = 0;
+        int old_type = -1;
+        rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
-            switch (type)
+            rv = ls_update_null(ctx, id, old_type);
+            if (rv == LITESTORE_OK && old_type != LS_NULL)
             {
-                case LS_NULL:
-                {
-                    rv = LITESTORE_OK;
-                }
-                break;
-
-                case LS_RAW:
-                {
-                    rv = ls_put_raw_data(ctx, new_id, value, value_len);
-                }
-                break;
-
-                case LS_OBJECT:
-                {
-                    rv = ls_put_object_data(ctx, new_id, value, value_len);
-                }
+                rv = ls_update_type(ctx, id, LS_NULL);
             }
+        }
+        else if (rv == LITESTORE_UNKNOWN_ENTITY)
+        {
+            rv = litestore_put_null(ctx, key, key_len);
+        }
+
+        if (own_tx)
+        {
+            ls_opt_end_tx(ctx, rv);
+        }
+    }
+    return rv;
+}
+
+int litestore_get_raw(litestore* ctx,
+                      const char* key, const size_t key_len,
+                      char** value, size_t* value_len)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0)
+    {
+        int own_tx = ls_opt_begin_tx(ctx);
+
+        litestore_id_t id = 0;
+        int type = -1;
+        rv = ls_get_key_type(ctx, key, key_len, &id, &type);
+
+        if (rv == LITESTORE_OK && type == LS_RAW)
+        {
+            rv = ls_get_raw_data(ctx, id, value, value_len);
+        }
+        else
+        {
+            rv = LITESTORE_ERR;
         }
 
         if (own_tx)
@@ -738,9 +743,9 @@ int litestore_put_raw(litestore* ctx,
     return rv;
 }
 
-int litestore_update(litestore* ctx,
-                     const char* key, const size_t key_len,
-                     const char* value, const size_t value_len)
+int litestore_update_raw(litestore* ctx,
+                         const char* key, const size_t key_len,
+                         const char* value, const size_t value_len)
 {
     int rv = LITESTORE_ERR;
     if (ctx && key && key_len > 0)
@@ -752,26 +757,17 @@ int litestore_update(litestore* ctx,
         rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
-            const int new_type = ls_resolve_value_type(value, value_len);
-            switch (new_type)
+            rv = ls_update_raw_data(ctx,
+                                    id, old_type,
+                                    value, value_len);
+            if (rv == LITESTORE_OK && old_type != LS_RAW)
             {
-                case LS_NULL:
-                    rv = ls_update_null(ctx, id, old_type);
-                    break;
-                case LS_RAW:
-                    rv = ls_update_raw_data(ctx,
-                                            id, old_type,
-                                            value, value_len);
-                    break;
-            }
-            if (rv == LITESTORE_OK && old_type != new_type)
-            {
-                rv = ls_update_type(ctx, id, new_type);
+                rv = ls_update_type(ctx, id, LS_RAW);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
         {
-            rv = litestore_put(ctx, key, key_len, value, value_len);
+            rv = litestore_put_raw(ctx, key, key_len, value, value_len);
         }
 
         if (own_tx)
