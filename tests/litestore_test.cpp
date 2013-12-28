@@ -91,11 +91,11 @@ struct LiteStore : Test
           jsonObject("{\"foo\":\"bar\",\"bar\":1}"),
           jsonArray("[\"foo\",1,{\"foo\":\"bar\"}]")
     {
-        if (litestore_open("/tmp/ls_test.db", &ctx) != LITESTORE_OK)
+        if (litestore_open(":memory:", &ctx) != LITESTORE_OK)
         {
             throw std::runtime_error("Faild to open DB!");
         }
-        db = reinterpret_cast<sqlite3*>(litestore_native_ctx(ctx));
+        db = static_cast<sqlite3*>(litestore_native_ctx(ctx));
     }
     virtual ~LiteStore()
     {

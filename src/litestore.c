@@ -11,6 +11,40 @@
 extern "C"
 #endif
 
+
+/**
+ * The DB schema.
+ */
+#define LITESTORE_SCHEMA_V1                                \
+    "CREATE TABLE IF NOT EXISTS meta("                  \
+    "       schema_version INTEGER NOT NULL DEFAULT 1"  \
+    ");"                                                \
+    "CREATE TABLE IF NOT EXISTS objects("               \
+    "       id INTEGER PRIMARY KEY NOT NULL,"           \
+    "       name TEXT NOT NULL UNIQUE,"                 \
+    "       type INTEGER NOT NULL"                      \
+    ");"                                                \
+    "CREATE TABLE IF NOT EXISTS raw_data("              \
+    "       id INTEGER NOT NULL,"                       \
+    "       raw_value BLOB NOT NULL,"                   \
+    "       FOREIGN KEY(id) REFERENCES objects(id)"     \
+    "       ON DELETE CASCADE ON UPDATE RESTRICT"       \
+    ");"                                                \
+    "CREATE TABLE IF NOT EXISTS kv_data("               \
+    "       id INTEGER NOT NULL,"                       \
+    "       kv_key BLOB NOT NULL,"                      \
+    "       kv_value BLOB NOT NULL,"                    \
+    "       FOREIGN KEY(id) REFERENCES objects(id)"     \
+    "       ON DELETE CASCADE ON UPDATE RESTRICT"       \
+    ");"                                                \
+    "CREATE TABLE IF NOT EXISTS array_data("            \
+    "       id INTEGER NOT NULL,"                       \
+    "       array_index INTEGER NOT NULL,"              \
+    "       array_value BLOB NOT NULL,"                 \
+    "       FOREIGN KEY(id) REFERENCES objects(id)"     \
+    "       ON DELETE CASCADE ON UPDATE RESTRICT"       \
+    ");"                                                \
+
 /**
  * The LiteStore object.
  */
@@ -65,10 +99,23 @@ void ls_print_sqlite_error(litestore* ctx)
     printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
 }
 
+int init_db(litestore* ctx)
+{
+    if (sqlite3_exec(ctx->db, LITESTORE_SCHEMA_V1, NULL, NULL, NULL)
+        == SQLITE_OK)
+    {
+        /* @todo Check schema version */
+        /* @note For some reason the pragma won't work if run
+           inside the same TX as schema. */
+        return (sqlite3_exec(ctx->db, "PRAGMA foreign_keys = ON;",
+                             NULL, NULL, NULL)
+                == SQLITE_OK) ? LITESTORE_OK : LITESTORE_ERR;
+    }
+    return LITESTORE_ERR;
+}
+
 int ls_prepare_statements(litestore* ctx)
 {
-    sqlite3_exec(ctx->db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
-
     const char* save_key =
         "INSERT INTO objects (name, type) VALUES (?, ?);";
     if (sqlite3_prepare_v2(ctx->db,
@@ -546,13 +593,13 @@ int litestore_open(const char* db_file_name, litestore** ctx)
     {
         memset(*ctx, 0, sizeof(litestore));
 
-        if (sqlite3_open(db_file_name, &(*ctx)->db) != SQLITE_OK)
+        if (sqlite3_open(db_file_name, &(*ctx)->db) != SQLITE_OK
+            || init_db(*ctx) != LITESTORE_OK)
         {
             litestore_close(*ctx);
             *ctx = NULL;
             return LITESTORE_ERR;
         }
-
         return ls_prepare_statements(*ctx);
     }
     return LITESTORE_ERR;
