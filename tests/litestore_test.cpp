@@ -167,7 +167,7 @@ struct LiteStore : Test
     JsonObjectDatas readJsonObjectDatas()
     {
         JsonObjectDatas results;
-        const char* s = "SELECT * FROM object_data;";
+        const char* s = "SELECT * FROM kv_data;";
         sqlite3_stmt* stmt = NULL;
         sqlite3_prepare_v2(db, s, -1, &stmt, NULL);
 

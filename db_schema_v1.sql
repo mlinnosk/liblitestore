@@ -12,17 +12,17 @@ CREATE TABLE raw_data(
        FOREIGN KEY(id) REFERENCES objects(id)
        ON DELETE CASCADE ON UPDATE RESTRICT
 );
-CREATE TABLE object_data(
+CREATE TABLE kv_data(
        id INTEGER NOT NULL,
-       json_key BLOB NOT NULL,
-       json_value BLOB NOT NULL,
+       kv_key BLOB NOT NULL,
+       kv_value BLOB NOT NULL,
        FOREIGN KEY(id) REFERENCES objects(id)
        ON DELETE CASCADE ON UPDATE RESTRICT
 );
 CREATE TABLE array_data(
        id INTEGER NOT NULL,
        array_index INTEGER NOT NULL,
-       json_value BLOB NOT NULL,
+       array_value BLOB NOT NULL,
        FOREIGN KEY(id) REFERENCES objects(id)
        ON DELETE CASCADE ON UPDATE RESTRICT
 );
