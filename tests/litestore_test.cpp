@@ -316,7 +316,12 @@ TEST_F(LiteStoreTx, get_null_gives_null)
     EXPECT_LS_OK(litestore_get_null(ctx, key.c_str(), key.length()));
 }
 
-// @todo test unknown return for wrong types etc.
+TEST_F(LiteStoreTx, get_null_returns_unknown_for_wrong_type)
+{
+    EXPECT_LS_OK(litestore_save_raw(ctx, key.c_str(), key.length(),
+                                    rawData.c_str(), rawData.length()));
+    EXPECT_LS_ERR(litestore_get_null(ctx, key.c_str(), key.length()));
+}
 
 TEST_F(LiteStoreTx, get_raw_gives_data)
 {
@@ -360,6 +365,17 @@ TEST_F(LiteStoreTx, update_null_to_raw_to_null)
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(0, objs[0].type);
     ASSERT_TRUE(readRawDatas().empty());
+}
+
+TEST_F(LiteStoreTx, get_raw_returns_unknown_for_wrong_type)
+{
+    EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
+
+    char* data = NULL;
+    std::size_t len = 0;
+    EXPECT_LS_ERR(litestore_get_raw(ctx, key.c_str(), key.length(),
+                                    &data, &len));
+    free(data);
 }
 
 // TEST_F(LiteStoreTx, save_saves_json_object)
