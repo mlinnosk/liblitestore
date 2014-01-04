@@ -43,9 +43,9 @@ struct ObjNameIs
 };
 
 
-struct LiteStoreTest : Test
+struct LitestoreTest : Test
 {
-    LiteStoreTest()
+    LitestoreTest()
         : ctx(NULL),
           db(NULL)
     {
@@ -55,7 +55,7 @@ struct LiteStoreTest : Test
         }
         db = static_cast<sqlite3*>(litestore_native_ctx(ctx));
     }
-    virtual ~LiteStoreTest()
+    virtual ~LitestoreTest()
     {
         dropDB();
         litestore_close(ctx);

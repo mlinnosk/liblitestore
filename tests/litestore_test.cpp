@@ -9,6 +9,7 @@
 #include "litestore.h"
 #include "litestore_test_common.h"
 
+
 namespace ls
 {
 using namespace ::testing;
@@ -53,10 +54,10 @@ struct RawDataIdIs
 // typedef std::vector<JsonObjectData> JsonObjectDatas;
 
 
-struct LiteStoreRawTest : LiteStoreTest
+struct LitestoreRawTest : LitestoreTest
 {
-    LiteStoreRawTest()
-        : LiteStoreTest(),
+    LitestoreRawTest()
+        : LitestoreTest(),
           key("key"),
           rawData("raw_data")
           // jsonObject("{\"foo\":\"bar\",\"bar\":1}"),
@@ -121,10 +122,10 @@ struct LiteStoreRawTest : LiteStoreTest
     // std::string jsonArray;
 };
 
-struct LiteStoreRawTx : public LiteStoreRawTest
+struct LitestoreRawTx : public LitestoreRawTest
 {
-    LiteStoreRawTx()
-        : LiteStoreRawTest()
+    LitestoreRawTx()
+        : LitestoreRawTest()
     {}
     virtual void SetUp()
     {
@@ -137,12 +138,12 @@ struct LiteStoreRawTx : public LiteStoreRawTest
 };
 
 
-TEST_F(LiteStoreRawTest, open_and_close)
+TEST_F(LitestoreRawTest, open_and_close)
 {
     SUCCEED();
 }
 
-TEST_F(LiteStoreRawTest, transactions_rollback)
+TEST_F(LitestoreRawTest, transactions_rollback)
 {
     EXPECT_LS_OK(litestore_begin_tx(ctx));
     EXPECT_EQ(SQLITE_OK,
@@ -156,7 +157,7 @@ TEST_F(LiteStoreRawTest, transactions_rollback)
     EXPECT_TRUE(readObjects().empty());
 }
 
-TEST_F(LiteStoreRawTest, transactions_commit)
+TEST_F(LitestoreRawTest, transactions_commit)
 {
     EXPECT_LS_OK(litestore_begin_tx(ctx));
     EXPECT_EQ(SQLITE_OK,
@@ -170,7 +171,7 @@ TEST_F(LiteStoreRawTest, transactions_commit)
     EXPECT_EQ(1u, readObjects().size());
 }
 
-TEST_F(LiteStoreRawTx, save_null_saves)
+TEST_F(LitestoreRawTx, save_null_saves)
 {
     EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
 
@@ -180,13 +181,13 @@ TEST_F(LiteStoreRawTx, save_null_saves)
     EXPECT_EQ(0, res[0].type);  // LS_NULL
 }
 
-TEST_F(LiteStoreRawTx, save_null_fails_for_dupliates)
+TEST_F(LitestoreRawTx, save_null_fails_for_dupliates)
 {
     EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
     EXPECT_LS_ERR(litestore_save_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreRawTx, save_raw_saves)
+TEST_F(LitestoreRawTx, save_raw_saves)
 {
     EXPECT_LS_OK(litestore_save_raw(ctx, key.c_str(), key.length(),
                                     rawData.c_str(), rawData.length()));
@@ -200,14 +201,14 @@ TEST_F(LiteStoreRawTx, save_raw_saves)
     EXPECT_EQ(res[0].id, res2[0].id);
 }
 
-TEST_F(LiteStoreRawTx, delete_nulls)
+TEST_F(LitestoreRawTx, delete_nulls)
 {
     litestore_save_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_delete(ctx, key.c_str(), key.length()));
     EXPECT_TRUE(readObjects().empty());
 }
 
-TEST_F(LiteStoreRawTx, delete_raws)
+TEST_F(LitestoreRawTx, delete_raws)
 {
     litestore_save_raw(ctx, key.c_str(), key.length(),
                        rawData.c_str(), rawData.length());
@@ -216,7 +217,7 @@ TEST_F(LiteStoreRawTx, delete_raws)
     EXPECT_TRUE(readRawDatas().empty());
 }
 
-TEST_F(LiteStoreRawTx, delete_returns_unknown)
+TEST_F(LitestoreRawTx, delete_returns_unknown)
 {
     litestore_save_null(ctx, key.c_str(), key.length());
     const std::string foo("foo");
@@ -224,20 +225,20 @@ TEST_F(LiteStoreRawTx, delete_returns_unknown)
               litestore_delete(ctx, foo.c_str(), foo.length()));
 }
 
-TEST_F(LiteStoreRawTx, get_null_gives_null)
+TEST_F(LitestoreRawTx, get_null_gives_null)
 {
     litestore_save_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_get_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreRawTx, get_null_returns_unknown_for_wrong_type)
+TEST_F(LitestoreRawTx, get_null_returns_unknown_for_wrong_type)
 {
     EXPECT_LS_OK(litestore_save_raw(ctx, key.c_str(), key.length(),
                                     rawData.c_str(), rawData.length()));
     EXPECT_LS_ERR(litestore_get_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreRawTx, get_raw_gives_data)
+TEST_F(LitestoreRawTx, get_raw_gives_data)
 {
     litestore_save_raw(ctx, key.c_str(), key.length(),
                        rawData.c_str(), rawData.length());
@@ -253,18 +254,18 @@ TEST_F(LiteStoreRawTx, get_raw_gives_data)
     EXPECT_EQ(rawData, res);
 }
 
-TEST_F(LiteStoreRawTx, get_null_returns_unknown)
+TEST_F(LitestoreRawTx, get_null_returns_unknown)
 {
     EXPECT_EQ(LITESTORE_UNKNOWN_ENTITY,
               litestore_get_null(ctx, key.c_str(), key.length()));
 }
 
-TEST_F(LiteStoreRawTx, get_null_with_bad_args)
+TEST_F(LitestoreRawTx, get_null_with_bad_args)
 {
     EXPECT_LS_ERR(litestore_get_null(ctx, NULL, 0));
 }
 
-TEST_F(LiteStoreRawTx, update_null_to_raw_to_null)
+TEST_F(LitestoreRawTx, update_null_to_raw_to_null)
 {
     litestore_save_null(ctx, key.c_str(), key.length());
     EXPECT_LS_OK(litestore_update_raw(ctx, key.c_str(), key.length(),
@@ -281,7 +282,7 @@ TEST_F(LiteStoreRawTx, update_null_to_raw_to_null)
     ASSERT_TRUE(readRawDatas().empty());
 }
 
-TEST_F(LiteStoreRawTx, get_raw_returns_unknown_for_wrong_type)
+TEST_F(LitestoreRawTx, get_raw_returns_unknown_for_wrong_type)
 {
     EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
 
@@ -292,7 +293,7 @@ TEST_F(LiteStoreRawTx, get_raw_returns_unknown_for_wrong_type)
     free(data);
 }
 
-// TEST_F(LiteStoreRawTx, save_saves_json_object)
+// TEST_F(LitestoreRawTx, save_saves_json_object)
 // {
 //     EXPECT_LS_OK(litestore_save_kv(ctx, key.c_str(), key.length(),
 //                                   jsonObject.c_str(),
