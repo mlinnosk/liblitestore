@@ -1,0 +1,112 @@
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include <sqlite3.h>
+
+#include "litestore.h"
+
+
+namespace ls
+{
+using namespace ::testing;
+
+// Structure for objects table rows.
+struct Obj
+{
+    Obj(sqlite3_int64 id_,
+        const std::string& name_,
+        int type_)
+        : id(id_),
+          name(name_),
+          type(type_)
+    {}
+    sqlite3_int64 id;
+    std::string name;
+    int type;
+};
+typedef std::vector<Obj> Objects;
+
+struct ObjNameIs
+{
+    ObjNameIs(const std::string& name_)
+        : name(name_)
+    {}
+    bool operator()(const Obj& obj) const
+    {
+        return name == obj.name;
+    }
+    std::string name;
+};
+
+
+struct LiteStoreTest : Test
+{
+    LiteStoreTest()
+        : ctx(NULL),
+          db(NULL)
+    {
+        if (litestore_open(":memory:", &ctx) != LITESTORE_OK)
+        {
+            throw std::runtime_error("Faild to open DB!");
+        }
+        db = static_cast<sqlite3*>(litestore_native_ctx(ctx));
+    }
+    virtual ~LiteStoreTest()
+    {
+        dropDB();
+        litestore_close(ctx);
+    }
+
+    void dropDB()
+    {
+        sqlite3_exec(db, "DELETE FROM objects;", NULL, NULL, NULL);
+    }
+
+    bool contains(const std::string& key)
+    {
+        const Objects res = readObjects();
+        return (std::find_if(res.begin(), res.end(), ObjNameIs(key))
+                != res.end());
+    }
+
+    Objects readObjects()
+    {
+        Objects results;
+        const char* s = "SELECT * FROM objects;";
+        sqlite3_stmt* stmt = NULL;
+        sqlite3_prepare_v2(db, s, -1, &stmt, NULL);
+
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const char* n =
+                reinterpret_cast<const char*>(
+                    sqlite3_column_text(stmt, 1));
+            const int size = sqlite3_column_bytes(stmt, 1);
+            const std::string name(n, size);
+
+            results.push_back(
+                Obj(sqlite3_column_int64(stmt, 0),
+                    name,
+                    sqlite3_column_int(stmt, 2)));
+        }
+        sqlite3_reset(stmt);
+        sqlite3_finalize(stmt);
+
+        return results;
+    }
+
+    litestore* ctx;
+    sqlite3* db;
+};
+
+
+#define EXPECT_LS_OK(pred) EXPECT_EQ(LITESTORE_OK, pred)
+#define EXPECT_LS_ERR(pred) EXPECT_EQ(LITESTORE_ERR, pred)
+#define ASSERT_LS_OK(pred) ASSERT_EQ(LITESTORE_OK, pred)
+#define ASSERT_LS_ERR(pred) ASSERT_EQ(LITESTORE_ERR, pred)
+
+}  // namespace ns
