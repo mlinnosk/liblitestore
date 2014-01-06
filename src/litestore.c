@@ -132,7 +132,7 @@ int ls_prepare_statements(litestore* ctx)
         return LITESTORE_ERR;
     }
     const char* save_raw_data =
-        "INSERT OR REPLACE INTO raw_data (id, raw_value) VALUES (?, ?);";
+        "INSERT INTO raw_data (id, raw_value) VALUES (?, ?);";
     if (sqlite3_prepare_v2(ctx->db,
                            save_raw_data,
                            -1,
@@ -237,7 +237,7 @@ int ls_prepare_statements(litestore* ctx)
         return LITESTORE_ERR;
     }
     const char* save_kv_data =
-        "INSERT OR REPLACE INTO kv_data (id, kv_key, kv_value) "
+        "INSERT INTO kv_data (id, kv_key, kv_value) "
         "VALUES (?, ?, ?);";
     if (sqlite3_prepare_v2(ctx->db,
                            save_kv_data,
