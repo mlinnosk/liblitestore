@@ -53,6 +53,7 @@ struct litestore
 sqlite3* db;
 sqlite3_stmt* save_key;
 sqlite3_stmt* save_raw_data;
+sqlite3_stmt* update_raw_data;
 sqlite3_stmt* delete_key;
 sqlite3_stmt* get_key;
 sqlite3_stmt* get_raw_data;
@@ -137,6 +138,18 @@ int ls_prepare_statements(litestore* ctx)
                            save_raw_data,
                            -1,
                            &(ctx->save_raw_data),
+                           NULL)
+        != SQLITE_OK)
+    {
+        ls_print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+    const char* update_raw_data =
+        "UPDATE raw_data SET raw_value = ? WHERE id = ?;";
+    if (sqlite3_prepare_v2(ctx->db,
+                           update_raw_data,
+                           -1,
+                           &(ctx->update_raw_data),
                            NULL)
         != SQLITE_OK)
     {
@@ -296,6 +309,8 @@ int ls_finalize_statements(litestore* ctx)
     ctx->save_key = NULL;
     sqlite3_finalize(ctx->save_raw_data);
     ctx->save_raw_data = NULL;
+    sqlite3_finalize(ctx->update_raw_data);
+    ctx->update_raw_data = NULL;
     sqlite3_finalize(ctx->delete_key);
     ctx->delete_key = NULL;
     sqlite3_finalize(ctx->get_key);
@@ -604,7 +619,30 @@ int ls_update_raw_data(litestore* ctx,
     }
     if (rv == LITESTORE_OK)
     {
-        rv = ls_save_raw_data(ctx, id, value, value_len);
+        /* try update, if it fails save */
+        if (sqlite3_bind_blob(ctx->update_raw_data, 1, value, value_len,
+                              SQLITE_STATIC) == SQLITE_OK
+            && sqlite3_bind_int64(ctx->update_raw_data, 2, id) == SQLITE_OK)
+        {
+            if (sqlite3_step(ctx->update_raw_data) == SQLITE_DONE)
+            {
+                if (sqlite3_changes(ctx->db) == 0)
+                {
+                    rv = ls_save_raw_data(ctx, id, value, value_len);
+                }
+            }
+            else
+            {
+                ls_print_sqlite_error(ctx);
+                rv = LITESTORE_ERR;
+            }
+        }
+        else
+        {
+            ls_print_sqlite_error(ctx);
+            rv = LITESTORE_ERR;
+        }
+        sqlite3_reset(ctx->update_raw_data);
     }
 
     return rv;
