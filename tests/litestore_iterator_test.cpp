@@ -78,9 +78,9 @@ TEST_F(MapIteratorTest, kv_iterator_produces_values)
          !iter.end(iter.user_data);
          iter.next(iter.user_data))
     {
-        const char* k = NULL;
+        const void* k = NULL;
         size_t k_len = 0;
-        const char* v = NULL;
+        const void* v = NULL;
         size_t v_len = 0;
         iter.value(iter.user_data,
                    &k, &k_len,
@@ -91,7 +91,8 @@ TEST_F(MapIteratorTest, kv_iterator_produces_values)
         ASSERT_TRUE(v);
         ASSERT_TRUE(v_len > 0);
 
-        m[std::string(k, k_len)] = std::string(v, v_len);
+        m[std::string(static_cast<const char*>(k), k_len)] =
+            std::string(static_cast<const char*>(v), v_len);
     }
 
     EXPECT_EQ(strMap, m);
@@ -127,14 +128,14 @@ TEST_F(VecIteratorTest, array_iterator_produces_values)
          !iter.end(iter.user_data);
          iter.next(iter.user_data))
     {
-        const char* v = NULL;
+        const void* v = NULL;
         size_t v_len = 0;
         iter.value(iter.user_data, &v, &v_len);
 
         ASSERT_TRUE(v);
         ASSERT_TRUE(v_len > 0);
 
-        vec.push_back(std::string(v, v_len));
+        vec.push_back(std::string(static_cast<const char*>(v), v_len));
     }
 
     EXPECT_EQ(strVec, vec);

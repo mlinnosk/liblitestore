@@ -36,8 +36,8 @@ typedef void (*litestore_iter_next)(void* user_data);
  */
 typedef void (*litestore_iter_kv_value)
 (void* user_data,
- const char** key, size_t* key_len,
- const char** value, size_t* value_len);
+ const void** key, size_t* key_len,
+ const void** value, size_t* value_len);
 
 /**
  * Structure for key-value iterator object.
@@ -56,7 +56,7 @@ typedef struct
  * Get value.
  */
 typedef void (*litestore_iter_array_value)
-(void* user_data, const char** value, size_t* value_len);
+(void* user_data, const void** value, size_t* value_len);
 
 /**
  * Structure for array iterator object.

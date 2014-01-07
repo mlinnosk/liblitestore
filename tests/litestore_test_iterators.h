@@ -35,8 +35,8 @@ struct MapIter
         ++(mi->curr);
     }
     static void value(void* user_data,
-                      const char** key, size_t* key_len,
-                      const char** value, size_t* value_len)
+                      const void** key, size_t* key_len,
+                      const void** value, size_t* value_len)
     {
         MapIter* mi = static_cast<MapIter*>(user_data);
         *key = mi->curr->first.c_str();
@@ -87,7 +87,7 @@ struct VecIter
         ++(mi->curr);
     }
     static void value(void* user_data,
-                      const char** value, size_t* value_len)
+                      const void** value, size_t* value_len)
     {
         VecIter* mi = static_cast<VecIter*>(user_data);
         *value = mi->curr->c_str();

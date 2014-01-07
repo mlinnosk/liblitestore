@@ -85,16 +85,16 @@ typedef sqlite3_int64 litestore_id_t;
  * Allocates a buffer and copies the str data of len to the new buffer.
  * The copy will be null terminated
  */
-char* ls_strdup(const void* str, const size_t len)
+void* ls_strdup(const void* str, const size_t len)
 {
     const size_t LEN = len + 1; /* extra for terminator */
-    char* copy = (char*)malloc(LEN);
+    void* copy = malloc(LEN);
     if (!copy)
     {
         return NULL;
     }
+    memset(copy, 0, len);
     memcpy(copy, str, len);
-    copy[len] = 0;
     return copy;
 }
 
@@ -377,7 +377,7 @@ int ls_save_key(litestore* ctx,
 
 int ls_save_raw_data(litestore* ctx,
                      const litestore_id_t new_id,
-                     const char* value, const size_t value_len)
+                     const void* value, const size_t value_len)
 {
     if (ctx->save_raw_data)
     {
@@ -432,9 +432,9 @@ int save_kv(litestore* ctx, const litestore_id_t id,
 int save_kv_data(litestore* ctx, const litestore_id_t new_id,
                  litestore_kv_iterator* data)
 {
-    const char* k = NULL;
+    const void* k = NULL;
     size_t k_len = 0;
-    const char* v = NULL;
+    const void* v = NULL;
     size_t v_len = 0;
 
     for (data->begin(data->user_data);
@@ -490,7 +490,7 @@ int ls_get_key_type(litestore* ctx,
 
 int ls_get_raw_data(litestore* ctx,
                     const litestore_id_t id,
-                    char** value, size_t* value_len)
+                    void** value, size_t* value_len)
 {
     if (ctx->get_raw_data)
     {
@@ -607,7 +607,7 @@ int ls_update_null(litestore* ctx,
 
 int ls_update_raw_data(litestore* ctx,
                        const litestore_id_t id, const int old_type,
-                       const char* value, const size_t value_len)
+                       const void* value, const size_t value_len)
 {
     int rv = LITESTORE_OK;
 
@@ -697,9 +697,9 @@ int update_kv_data(litestore* ctx,
     }
     if (rv == LITESTORE_OK)
     {
-        const char* k = NULL;
+        const void* k = NULL;
         size_t k_len = 0;
-        const char* v = NULL;
+        const void* v = NULL;
         size_t v_len = 0;
 
         for (data->begin(data->user_data);
@@ -768,7 +768,7 @@ int ls_opt_end_tx(litestore* ctx, int status)
 
 int get_kv_data(litestore* ctx,
                 const litestore_id_t id,
-                const char* key, const size_t key_len,
+                const void* key, const size_t key_len,
                 ls_get_kv_cb callback, void* user_data)
 {
     int rv = LITESTORE_ERR;
@@ -974,7 +974,7 @@ int litestore_update_null(litestore* ctx,
 
 int litestore_get_raw(litestore* ctx,
                       const char* key, const size_t key_len,
-                      char** value, size_t* value_len)
+                      void** value, size_t* value_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -1006,7 +1006,7 @@ int litestore_get_raw(litestore* ctx,
 
 int litestore_save_raw(litestore* ctx,
                        const char* key, const size_t key_len,
-                       const char* value, const size_t value_len)
+                       const void* value, const size_t value_len)
 {
     int rv = LITESTORE_ERR;
 
@@ -1032,7 +1032,7 @@ int litestore_save_raw(litestore* ctx,
 
 int litestore_update_raw(litestore* ctx,
                          const char* key, const size_t key_len,
-                         const char* value, const size_t value_len)
+                         const void* value, const size_t value_len)
 {
     int rv = LITESTORE_ERR;
     if (ctx && key && key_len > 0)

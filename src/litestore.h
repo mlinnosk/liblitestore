@@ -91,7 +91,7 @@ int litestore_update_null(litestore* ctx,
  */
 int litestore_get_raw(litestore* ctx,
                       const char* key, const size_t key_len,
-                      char** value, size_t* value_len);
+                      void** value, size_t* value_len);
 
 /**
  * Save 'raw' value int the store.
@@ -110,7 +110,7 @@ int litestore_get_raw(litestore* ctx,
  */
 int litestore_save_raw(litestore* ctx,
                        const char* key, const size_t key_len,
-                       const char* value, const size_t value_len);
+                       const void* value, const size_t value_len);
 
 /**
  * Update existing value with new 'raw' data.
@@ -128,7 +128,7 @@ int litestore_save_raw(litestore* ctx,
  */
 int litestore_update_raw(litestore* ctx,
                          const char* key, const size_t key_len,
-                         const char* value, const size_t value_len);
+                         const void* value, const size_t value_len);
 
 /**
  * Save 'key-value'-object in the store.
@@ -161,8 +161,8 @@ int litestore_save_kv(litestore* ctx,
  */
 typedef int (*ls_get_kv_cb)(
     const char* key, const size_t key_len,
-    const char* kv_key, const size_t kv_key_len,
-    const char* kv_value, const size_t kv_value_len,
+    const void* kv_key, const size_t kv_key_len,
+    const void* kv_value, const size_t kv_value_len,
     void* user_data);
 
 /**

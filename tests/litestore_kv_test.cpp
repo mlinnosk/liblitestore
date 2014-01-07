@@ -90,8 +90,8 @@ struct LitestoreKVTest : public LitestoreTest
 };
 
 int buildMap(const char* /* key */, const std::size_t /* key_len */,
-             const char* kv_key, const std::size_t kv_key_len,
-             const char* kv_value, const std::size_t kv_value_len,
+             const void* kv_key, const std::size_t kv_key_len,
+             const void* kv_value, const std::size_t kv_value_len,
              void* user_data)
 {
     if (kv_key && kv_key_len)
@@ -99,13 +99,18 @@ int buildMap(const char* /* key */, const std::size_t /* key_len */,
         iter::StrMap* m = static_cast<iter::StrMap*>(user_data);
         if (kv_value && kv_value_len)
         {
-            m->insert(std::make_pair(std::string(kv_key, kv_key_len),
-                                     std::string(kv_value, kv_value_len)));
+            m->insert(std::make_pair(
+                          std::string(static_cast<const char*>(kv_key),
+                                      kv_key_len),
+                          std::string(static_cast<const char*>(kv_value),
+                                      kv_value_len)));
         }
         else
         {
-            m->insert(std::make_pair(std::string(kv_key, kv_key_len),
-                                     std::string()));
+            m->insert(std::make_pair(
+                          std::string(static_cast<const char*>(kv_key),
+                                      kv_key_len),
+                          std::string()));
         }
         return LITESTORE_OK;
     }

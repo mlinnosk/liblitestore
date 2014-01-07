@@ -193,13 +193,13 @@ TEST_F(LitestoreRawTx, get_raw_gives_data)
 {
     litestore_save_raw(ctx, key.c_str(), key.length(),
                        rawData.c_str(), rawData.length());
-    char* data = NULL;
+    void* data = NULL;
     std::size_t len = 0;
     EXPECT_LS_OK(litestore_get_raw(ctx, key.c_str(), key.length(),
                                    &data, &len));
     ASSERT_TRUE(data);
     ASSERT_TRUE(len > 0);
-    const std::string res(data, len);
+    const std::string res(static_cast<char*>(data), len);
     free(data);
 
     EXPECT_EQ(rawData, res);
@@ -250,7 +250,7 @@ TEST_F(LitestoreRawTx, get_raw_returns_unknown_for_wrong_type)
 {
     EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
 
-    char* data = NULL;
+    void* data = NULL;
     std::size_t len = 0;
     EXPECT_LS_ERR(litestore_get_raw(ctx, key.c_str(), key.length(),
                                     &data, &len));
