@@ -81,23 +81,6 @@ enum
 /* The native db ID type */
 typedef sqlite3_int64 litestore_id_t;
 
-/*
- * Allocates a buffer and copies the str data of len to the new buffer.
- * The copy will be null terminated
- */
-void* ls_strdup(const void* str, const size_t len)
-{
-    const size_t LEN = len + 1; /* extra for terminator */
-    void* copy = malloc(LEN);
-    if (!copy)
-    {
-        return NULL;
-    }
-    memset(copy, 0, len);
-    memcpy(copy, str, len);
-    return copy;
-}
-
 void ls_print_sqlite_error(litestore* ctx)
 {
     printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
@@ -490,7 +473,7 @@ int ls_get_key_type(litestore* ctx,
 
 int ls_get_raw_data(litestore* ctx,
                     const litestore_id_t id,
-                    void** value, size_t* value_len)
+                    litestore_get_raw_cb callback, void* user_data)
 {
     if (ctx->get_raw_data)
     {
@@ -513,12 +496,7 @@ int ls_get_raw_data(litestore* ctx,
                                                0);
         if (bytes > 0)
         {
-            *value = ls_strdup(raw_data, bytes);
-            if (*value)
-            {
-                *value_len = bytes;
-                return LITESTORE_OK;
-            }
+            return (*callback)(raw_data, bytes, user_data);
         }
     }
     return LITESTORE_ERR;
@@ -974,7 +952,7 @@ int litestore_update_null(litestore* ctx,
 
 int litestore_get_raw(litestore* ctx,
                       const char* key, const size_t key_len,
-                      void** value, size_t* value_len)
+                      litestore_get_raw_cb callback, void* user_data)
 {
     int rv = LITESTORE_ERR;
 
@@ -988,7 +966,7 @@ int litestore_get_raw(litestore* ctx,
 
         if (rv == LITESTORE_OK && type == LS_RAW)
         {
-            rv = ls_get_raw_data(ctx, id, value, value_len);
+            rv = ls_get_raw_data(ctx, id, callback, user_data);
         }
         else
         {

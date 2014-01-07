@@ -14,6 +14,9 @@ namespace ls
 {
 using namespace ::testing;
 
+namespace
+{
+
 struct RawData
 {
     RawData(sqlite3_int64 id_,
@@ -88,6 +91,22 @@ struct LitestoreRawTx : public LitestoreRawTest
     }
 };
 
+int void2str(const void* value, std::size_t value_len, void* user_data)
+{
+    std::string* str = static_cast<std::string*>(user_data);
+    if (value && value_len > 0)
+    {
+        *str = std::string(static_cast<const char*>(value), value_len);
+    }
+    return LITESTORE_OK;
+}
+
+int failCb(const void*, std::size_t, void*)
+{
+    return 100;
+}
+
+}  // namespace
 
 TEST_F(LitestoreRawTest, open_and_close)
 {
@@ -193,16 +212,10 @@ TEST_F(LitestoreRawTx, get_raw_gives_data)
 {
     litestore_save_raw(ctx, key.c_str(), key.length(),
                        rawData.c_str(), rawData.length());
-    void* data = NULL;
-    std::size_t len = 0;
+    std::string data;
     EXPECT_LS_OK(litestore_get_raw(ctx, key.c_str(), key.length(),
-                                   &data, &len));
-    ASSERT_TRUE(data);
-    ASSERT_TRUE(len > 0);
-    const std::string res(static_cast<char*>(data), len);
-    free(data);
-
-    EXPECT_EQ(rawData, res);
+                                   &void2str, &data));
+    EXPECT_EQ(rawData, data);
 }
 
 TEST_F(LitestoreRawTx, get_null_returns_unknown)
@@ -250,11 +263,17 @@ TEST_F(LitestoreRawTx, get_raw_returns_unknown_for_wrong_type)
 {
     EXPECT_LS_OK(litestore_save_null(ctx, key.c_str(), key.length()));
 
-    void* data = NULL;
-    std::size_t len = 0;
+    std::string data;
     EXPECT_LS_ERR(litestore_get_raw(ctx, key.c_str(), key.length(),
-                                    &data, &len));
-    free(data);
+                                    &void2str, &data));
+}
+
+TEST_F(LitestoreRawTx, get_raw_returns_callback_error)
+{
+    litestore_save_raw(ctx, key.c_str(), key.length(),
+                       rawData.c_str(), rawData.length());
+    EXPECT_EQ(100, litestore_get_raw(ctx, key.c_str(), key.length(),
+                                     &failCb, NULL));
 }
 
 }  // namespace ls

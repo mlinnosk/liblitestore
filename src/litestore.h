@@ -72,26 +72,32 @@ int litestore_update_null(litestore* ctx,
                           const char* key, const size_t key_len);
 
 /**
+ * A callback to be used with get_raw.
+ *
+ * @param value The data read.
+ * @param value_len The length of the value in bytes.
+ * @param user_data User provided data.
+ * @return On success LITESTORE_OK, user defined otherwise.
+ */
+typedef int (*litestore_get_raw_cb)(const void* data, size_t data_len,
+                                    void* user_data);
+
+/**
  * Get a 'raw' value with the given key.
  *
  * @param ctx
  * @param key The key.
  * @param key_len Length of the key.
- * @param value A pointer to a pointer for the value.
- *              This function will allocate a new string for the
- *              value if one is found in the store.
- *              The lenght of the data, not including NULL terminator,
- *              will be placed in the value_len parameter.
- * @param value_len If data type is other than LS_NULL,
- *                  On success will contain the length of the data,
- *                  NOT including NULL terminator.
+ * @param callback A callback that will be called for the read value.
+ * @param user_data User provided data passed to the callback.
  *
  * @return LITESTORE_OK on success,
+ *         Callback return if other than LITESTORE_OK,
  *         LITESTORE_ERR otherwise.
  */
 int litestore_get_raw(litestore* ctx,
                       const char* key, const size_t key_len,
-                      void** value, size_t* value_len);
+                      litestore_get_raw_cb callback, void* user_data);
 
 /**
  * Save 'raw' value int the store.
