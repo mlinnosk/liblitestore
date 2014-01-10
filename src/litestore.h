@@ -215,6 +215,82 @@ int litestore_update_kv(litestore* ctx,
                         litestore_kv_iterator data);
 
 /**
+ * Save array-object in the store.
+ * Associate all values described by 'data' iterator
+ * to the given key.
+ * Will fail if key exists.
+ *
+ * @param ctx
+ * @param key The key.
+ * @param key_len Length of the key.
+ * @param data Iterator for array data.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+int litestore_save_array(litestore* ctx,
+                         const char* key, const size_t key_len,
+                         litestore_array_iterator data);
+
+/**
+ * Callback used with get_array.
+ *
+ * @param key The key.
+ * @param key_len Length of the key.
+ * @param array_index Index of the value that was stored.
+ * @param array_value The value at index.
+ * @param array_value_len Length of the value.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+typedef int (*ls_get_array_cb)(
+    const char* key, const size_t key_len,
+    const unsigned array_index,
+    const void* array_value, const size_t array_value_len,
+    void* user_data);
+
+/**
+ * Get an array-object with the given key.
+ * The given callback will be called for each value kv pair.
+ * Values will be retrieved in the same order they were stored.
+ *
+ * @param ctx
+ * @param key The key.
+ * @param key_len Length of the key.
+ * @param callback A Function pointer to a callback called for each value
+ * @param user_data Pointer to user data passed for callback calls.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+int litestore_get_array(litestore* ctx,
+                        const char* key, const size_t key_len,
+                        ls_get_array_cb callback, void* user_data);
+
+/**
+ * Update existing value with new 'array' data.
+ * If the key does not exist, it will be created.
+ *
+ * If the old type is other than 'array' the data will be deleted.
+ *
+ * @note If the object exists, only the array indexes listed
+ *       by 'data' will be updated. Possibly existing indexes that are
+ *       not listed by 'data' will _not_ be deleted. For some
+ *       this might be counter intuitive. Reasoning behind this
+ *       is performance and simplicity.
+ *       If one needs to delete, use delete and then save.
+ *       Updates are "incremental".
+ *
+ * @param ctx
+ * @param key The key.
+ * @param key_len Length of the key, excluding null terminator.
+ * @param data Iterator for the array data.
+ * @return LITESTORE_OK on success
+ *         LITESTORE_ERR on error.
+ */
+int litestore_update_array(litestore* ctx,
+                           const char* key, const size_t key_len,
+                           litestore_array_iterator data);
+
+/**
  * Delete the given entry from the store.
  * Deletes all types.
  *
