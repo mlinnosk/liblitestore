@@ -90,7 +90,7 @@ enum
 /* The native db ID type */
 typedef sqlite3_int64 litestore_id_t;
 
-void ls_print_sqlite_error(litestore* ctx)
+void print_sqlite_error(litestore* ctx)
 {
     printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
 }
@@ -120,7 +120,7 @@ int prepare_stmt(litestore* ctx, const char* sql, sqlite3_stmt** stmt)
     return LITESTORE_OK;
 }
 
-int ls_prepare_statements(litestore* ctx)
+int prepare_statements(litestore* ctx)
 {
     /* object */
     if (prepare_stmt(ctx,
@@ -190,7 +190,7 @@ int ls_prepare_statements(litestore* ctx)
                         "DELETE FROM kv_data WHERE id = ?;",
                         &(ctx->delete_kv_data)) != LITESTORE_OK)
     {
-        ls_print_sqlite_error(ctx);
+        print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
 
@@ -204,7 +204,7 @@ void finalize_stmt(sqlite3_stmt** stmt)
     *stmt = NULL;
 }
 
-int ls_finalize_statements(litestore* ctx)
+int finalize_statements(litestore* ctx)
 {
     /* object */
     finalize_stmt(&(ctx->save_key));
@@ -239,7 +239,7 @@ int ls_finalize_statements(litestore* ctx)
 /*----------------- SAVE ------------------*/
 /*-----------------------------------------*/
 
-int ls_save_key(litestore* ctx,
+int save_key(litestore* ctx,
                 const char* key, const size_t key_len,
                 const int data_type,
                 litestore_id_t* id)
@@ -253,12 +253,12 @@ int ls_save_key(litestore* ctx,
             || sqlite3_bind_int(ctx->save_key,
                                 2, data_type) != SQLITE_OK)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (sqlite3_step(ctx->save_key) != SQLITE_DONE)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (id)
@@ -270,7 +270,7 @@ int ls_save_key(litestore* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_save_raw_data(litestore* ctx,
+int save_raw_data(litestore* ctx,
                      const litestore_id_t new_id,
                      const void* value, const size_t value_len)
 {
@@ -284,12 +284,12 @@ int ls_save_raw_data(litestore* ctx,
                                  SQLITE_STATIC)
             != SQLITE_OK)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (sqlite3_step(ctx->save_raw_data) != SQLITE_DONE)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         return LITESTORE_OK;
@@ -316,7 +316,7 @@ int save_kv(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         sqlite3_reset(ctx->save_kv_data);
     }
@@ -368,7 +368,7 @@ int save_array(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         sqlite3_reset(ctx->save_array_data);
     }
@@ -405,7 +405,7 @@ int save_array_data(litestore* ctx, const litestore_id_t new_id,
 /*----------------- GET -------------------*/
 /*-----------------------------------------*/
 
-int ls_get_key_type(litestore* ctx,
+int get_key_type(litestore* ctx,
                     const char* key, const size_t key_len,
                     litestore_id_t* id, int* type)
 {
@@ -416,7 +416,7 @@ int ls_get_key_type(litestore* ctx,
                               1, key, key_len,
                               SQLITE_STATIC) != SQLITE_OK)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         /* expect only one aswer */
@@ -433,7 +433,7 @@ int ls_get_key_type(litestore* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_get_raw_data(litestore* ctx,
+int get_raw_data(litestore* ctx,
                     const litestore_id_t id,
                     litestore_get_raw_cb callback, void* user_data)
 {
@@ -443,13 +443,13 @@ int ls_get_raw_data(litestore* ctx,
         if (sqlite3_bind_int64(ctx->get_raw_data,
                                1, id) != SQLITE_OK)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         /* expect only one aswer */
         if (sqlite3_step(ctx->get_raw_data) != SQLITE_ROW)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         const void* raw_data = sqlite3_column_blob(ctx->get_raw_data,
@@ -464,38 +464,38 @@ int ls_get_raw_data(litestore* ctx,
     return LITESTORE_ERR;
 }
 
-int ls_update_type(litestore* ctx,
+int update_type(litestore* ctx,
                    const litestore_id_t id, const int type)
 {
     sqlite3_reset(ctx->update_type);
     if (sqlite3_bind_int(ctx->update_type, 1, type) != SQLITE_OK
         || sqlite3_bind_int64(ctx->update_type, 2, id) != SQLITE_OK)
     {
-        ls_print_sqlite_error(ctx);
+        print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
     if (sqlite3_step(ctx->update_type) != SQLITE_DONE)
     {
-        ls_print_sqlite_error(ctx);
+        print_sqlite_error(ctx);
         return LITESTORE_ERR;
     }
 
     return LITESTORE_OK;
 }
 
-int ls_delete_raw_data(litestore*ctx, const litestore_id_t id)
+int delete_raw_data(litestore*ctx, const litestore_id_t id)
 {
     if (ctx->delete_raw_data)
     {
         sqlite3_reset(ctx->delete_raw_data);
         if ((sqlite3_bind_int64(ctx->delete_raw_data, 1, id) != SQLITE_OK))
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (sqlite3_step(ctx->delete_raw_data) != SQLITE_DONE)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
     }
@@ -519,7 +519,7 @@ int delete_kv_data(litestore* ctx, const litestore_id_t id)
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         sqlite3_reset(ctx->delete_kv_data);
     }
@@ -540,7 +540,7 @@ int delete_array_data(litestore* ctx, const litestore_id_t id)
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         sqlite3_reset(ctx->delete_array_data);
     }
@@ -548,7 +548,7 @@ int delete_array_data(litestore* ctx, const litestore_id_t id)
     return rv;
 }
 
-int ls_update_null(litestore* ctx,
+int update_null(litestore* ctx,
                    const litestore_id_t id, const int old_type)
 {
     int rv = LITESTORE_OK;
@@ -556,7 +556,7 @@ int ls_update_null(litestore* ctx,
     switch (old_type)
     {
         case LS_RAW:
-            rv = ls_delete_raw_data(ctx, id);
+            rv = delete_raw_data(ctx, id);
             break;
         case LS_ARRAY:
             rv = delete_array_data(ctx, id);
@@ -569,7 +569,7 @@ int ls_update_null(litestore* ctx,
     return rv;
 }
 
-int ls_update_raw_data(litestore* ctx,
+int update_raw_data(litestore* ctx,
                        const litestore_id_t id, const int old_type,
                        const void* value, const size_t value_len)
 {
@@ -595,18 +595,18 @@ int ls_update_raw_data(litestore* ctx,
             {
                 if (sqlite3_changes(ctx->db) == 0)
                 {
-                    rv = ls_save_raw_data(ctx, id, value, value_len);
+                    rv = save_raw_data(ctx, id, value, value_len);
                 }
             }
             else
             {
-                ls_print_sqlite_error(ctx);
+                print_sqlite_error(ctx);
                 rv = LITESTORE_ERR;
             }
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             rv = LITESTORE_ERR;
         }
         sqlite3_reset(ctx->update_raw_data);
@@ -638,7 +638,7 @@ int update_kv(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         sqlite3_reset(ctx->update_kv_data);
     }
@@ -655,7 +655,7 @@ int update_kv_data(litestore* ctx,
     switch (old_type)
     {
         case LS_RAW:
-            rv = ls_delete_raw_data(ctx, id);
+            rv = delete_raw_data(ctx, id);
             break;
         case LS_ARRAY:
             rv = delete_array_data(ctx, id);
@@ -710,7 +710,7 @@ int update_array(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         sqlite3_reset(ctx->update_array_data);
     }
@@ -727,7 +727,7 @@ int update_array_data(litestore* ctx,
     switch (old_type)
     {
         case LS_RAW:
-            rv = ls_delete_raw_data(ctx, id);
+            rv = delete_raw_data(ctx, id);
             break;
         case LS_KV:
             rv = delete_kv_data(ctx, id);
@@ -757,7 +757,7 @@ int update_array_data(litestore* ctx,
     return rv;
 }
 
-int ls_run_stmt(litestore* ctx, sqlite3_stmt* stmt)
+int run_stmt(litestore* ctx, sqlite3_stmt* stmt)
 {
     int rv = LITESTORE_ERR;
 
@@ -769,7 +769,7 @@ int ls_run_stmt(litestore* ctx, sqlite3_stmt* stmt)
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
     }
     sqlite3_reset(stmt);
@@ -780,7 +780,7 @@ int ls_run_stmt(litestore* ctx, sqlite3_stmt* stmt)
 /**
  * @return 1 on success, 0 on error (boolean value)
  */
-int ls_opt_begin_tx(litestore* ctx)
+int opt_begin_tx(litestore* ctx)
 {
     if (!ctx->tx_active && litestore_begin_tx(ctx) == LITESTORE_OK)
     {
@@ -792,7 +792,7 @@ int ls_opt_begin_tx(litestore* ctx)
 /**
  * @return Return value of the tx function called.
  */
-int ls_opt_end_tx(litestore* ctx, int status)
+int opt_end_tx(litestore* ctx, int status)
 {
     if (status == LITESTORE_OK)
     {
@@ -812,7 +812,7 @@ int get_kv_data(litestore* ctx,
     {
         if (sqlite3_bind_int64(ctx->get_kv_data, 1, id) != SQLITE_OK)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         else
         {
@@ -839,7 +839,7 @@ int get_kv_data(litestore* ctx,
                 }
                 else
                 {
-                    ls_print_sqlite_error(ctx);
+                    print_sqlite_error(ctx);
                     break;
                 }
             }  // while
@@ -865,7 +865,7 @@ int get_array_data(litestore* ctx,
     {
         if (sqlite3_bind_int64(ctx->get_array_data, 1, id) != SQLITE_OK)
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
         }
         else
         {
@@ -890,7 +890,7 @@ int get_array_data(litestore* ctx,
                 }
                 else
                 {
-                    ls_print_sqlite_error(ctx);
+                    print_sqlite_error(ctx);
                     break;
                 }
             }  // while
@@ -928,7 +928,7 @@ int litestore_open(const char* db_file_name, litestore** ctx)
             *ctx = NULL;
             return LITESTORE_ERR;
         }
-        return ls_prepare_statements(*ctx);
+        return prepare_statements(*ctx);
     }
     return LITESTORE_ERR;
 }
@@ -939,7 +939,7 @@ void litestore_close(litestore* ctx)
     {
         if (ctx->db)
         {
-            ls_finalize_statements(ctx);
+            finalize_statements(ctx);
             sqlite3_close(ctx->db);
             ctx->db = NULL;
         }
@@ -949,7 +949,7 @@ void litestore_close(litestore* ctx)
 
 int litestore_begin_tx(litestore* ctx)
 {
-    const int rv = ls_run_stmt(ctx, ctx->begin_tx);
+    const int rv = run_stmt(ctx, ctx->begin_tx);
     if (rv == LITESTORE_OK)
     {
         ctx->tx_active = 1;
@@ -959,7 +959,7 @@ int litestore_begin_tx(litestore* ctx)
 
 int litestore_commit_tx(litestore* ctx)
 {
-    const int rv = ls_run_stmt(ctx, ctx->commit_tx);
+    const int rv = run_stmt(ctx, ctx->commit_tx);
     if (rv == LITESTORE_OK)
     {
         ctx->tx_active = 0;
@@ -969,7 +969,7 @@ int litestore_commit_tx(litestore* ctx)
 
 int litestore_rollback_tx(litestore* ctx)
 {
-    const int rv = ls_run_stmt(ctx, ctx->rollback_tx);
+    const int rv = run_stmt(ctx, ctx->rollback_tx);
     if (rv == LITESTORE_OK)
     {
         ctx->tx_active = 0;
@@ -984,11 +984,11 @@ int litestore_get_null(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_key_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type != LS_NULL)
         {
@@ -997,7 +997,7 @@ int litestore_get_null(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1011,14 +1011,14 @@ int litestore_save_null(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = ls_save_key(ctx, key, key_len, LS_NULL, &new_id);
+        rv = save_key(ctx, key, key_len, LS_NULL, &new_id);
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1031,17 +1031,17 @@ int litestore_update_null(litestore* ctx,
     int rv = LITESTORE_ERR;
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_key_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
-            rv = ls_update_null(ctx, id, old_type);
+            rv = update_null(ctx, id, old_type);
             if (rv == LITESTORE_OK && old_type != LS_NULL)
             {
-                rv = ls_update_type(ctx, id, LS_NULL);
+                rv = update_type(ctx, id, LS_NULL);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1051,7 +1051,7 @@ int litestore_update_null(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
     return rv;
@@ -1065,15 +1065,15 @@ int litestore_get_raw(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_key_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_RAW)
         {
-            rv = ls_get_raw_data(ctx, id, callback, user_data);
+            rv = get_raw_data(ctx, id, callback, user_data);
         }
         else
         {
@@ -1082,7 +1082,7 @@ int litestore_get_raw(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1097,18 +1097,18 @@ int litestore_save_raw(litestore* ctx,
 
     if (ctx && key && key_len > 0 && value && value_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = ls_save_key(ctx, key, key_len, LS_RAW, &new_id);
+        rv = save_key(ctx, key, key_len, LS_RAW, &new_id);
         if (rv == LITESTORE_OK)
         {
-            rv = ls_save_raw_data(ctx, new_id, value, value_len);
+            rv = save_raw_data(ctx, new_id, value, value_len);
         }
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1122,19 +1122,19 @@ int litestore_update_raw(litestore* ctx,
     int rv = LITESTORE_ERR;
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_key_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
-            rv = ls_update_raw_data(ctx,
+            rv = update_raw_data(ctx,
                                     id, old_type,
                                     value, value_len);
             if (rv == LITESTORE_OK && old_type != LS_RAW)
             {
-                rv = ls_update_type(ctx, id, LS_RAW);
+                rv = update_type(ctx, id, LS_RAW);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1144,7 +1144,7 @@ int litestore_update_raw(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
     return rv;
@@ -1158,10 +1158,10 @@ int litestore_save_kv(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = ls_save_key(ctx, key, key_len, LS_KV, &new_id);
+        rv = save_key(ctx, key, key_len, LS_KV, &new_id);
         if (rv == LITESTORE_OK)
         {
             rv = save_kv_data(ctx, new_id, &data);
@@ -1169,7 +1169,7 @@ int litestore_save_kv(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1184,11 +1184,11 @@ int litestore_get_kv(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_key_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_KV)
         {
@@ -1201,7 +1201,7 @@ int litestore_get_kv(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1216,17 +1216,17 @@ int litestore_update_kv(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_key_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_kv_data(ctx, id, old_type, &data);
             if (rv == LITESTORE_OK && old_type != LS_KV)
             {
-                rv = ls_update_type(ctx, id, LS_KV);
+                rv = update_type(ctx, id, LS_KV);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1236,7 +1236,7 @@ int litestore_update_kv(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1251,10 +1251,10 @@ int litestore_save_array(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = ls_save_key(ctx, key, key_len, LS_ARRAY, &new_id);
+        rv = save_key(ctx, key, key_len, LS_ARRAY, &new_id);
         if (rv == LITESTORE_OK)
         {
             rv = save_array_data(ctx, new_id, &data);
@@ -1262,7 +1262,7 @@ int litestore_save_array(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1277,11 +1277,11 @@ int litestore_get_array(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_key_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_ARRAY)
         {
@@ -1294,7 +1294,7 @@ int litestore_get_array(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1309,17 +1309,17 @@ int litestore_update_array(litestore* ctx,
 
     if (ctx && key && key_len > 0)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = ls_get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_key_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_array_data(ctx, id, old_type, &data);
             if (rv == LITESTORE_OK && old_type != LS_ARRAY)
             {
-                rv = ls_update_type(ctx, id, LS_ARRAY);
+                rv = update_type(ctx, id, LS_ARRAY);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1329,7 +1329,7 @@ int litestore_update_array(litestore* ctx,
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
@@ -1344,7 +1344,7 @@ int litestore_delete(litestore* ctx,
     /* delete should cascade */
     if (ctx && key && key_len > 0 && ctx->delete_key)
     {
-        int own_tx = ls_opt_begin_tx(ctx);
+        int own_tx = opt_begin_tx(ctx);
 
         sqlite3_reset(ctx->delete_key);
         if (sqlite3_bind_text(ctx->delete_key,
@@ -1358,19 +1358,19 @@ int litestore_delete(litestore* ctx,
             }
             else
             {
-                ls_print_sqlite_error(ctx);
+                print_sqlite_error(ctx);
                 rv = LITESTORE_ERR;
             }
         }
         else
         {
-            ls_print_sqlite_error(ctx);
+            print_sqlite_error(ctx);
             rv = LITESTORE_ERR;
         }
 
         if (own_tx)
         {
-            ls_opt_end_tx(ctx, rv);
+            opt_end_tx(ctx, rv);
         }
     }
 
