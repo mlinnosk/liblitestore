@@ -51,31 +51,31 @@ extern "C"
 struct litestore
 {
 sqlite3* db;
-sqlite3_stmt* save_key;
-sqlite3_stmt* save_raw_data;
-sqlite3_stmt* update_raw_data;
-sqlite3_stmt* delete_key;
-sqlite3_stmt* get_key;
-/* raw */
-sqlite3_stmt* get_raw_data;
-sqlite3_stmt* update_type;
-sqlite3_stmt* delete_raw_data;
-/* Tx */
+/* tx */
 sqlite3_stmt* begin_tx;
 sqlite3_stmt* commit_tx;
 sqlite3_stmt* rollback_tx;
-/* KV */
-sqlite3_stmt* save_kv_data;
-sqlite3_stmt* update_kv_data;
-sqlite3_stmt* get_kv_data;
-sqlite3_stmt* delete_kv_data;
+int tx_active;
+/* object */
+sqlite3_stmt* save_key;
+sqlite3_stmt* get_key;
+sqlite3_stmt* delete_key;
+sqlite3_stmt* update_type;
+/* raw */
+sqlite3_stmt* save_raw_data;
+sqlite3_stmt* get_raw_data;
+sqlite3_stmt* update_raw_data;
+sqlite3_stmt* delete_raw_data;
 /* array */
 sqlite3_stmt* save_array_data;
 sqlite3_stmt* get_array_data;
 sqlite3_stmt* update_array_data;
 sqlite3_stmt* delete_array_data;
-
-int tx_active;
+/* kv */
+sqlite3_stmt* save_kv_data;
+sqlite3_stmt* get_kv_data;
+sqlite3_stmt* update_kv_data;
+sqlite3_stmt* delete_kv_data;
 };
 
 /* Possible db.objects.type values */
@@ -110,234 +110,85 @@ int init_db(litestore* ctx)
     return LITESTORE_ERR;
 }
 
+inline
+int prepare_stmt(litestore* ctx, const char* sql, sqlite3_stmt** stmt)
+{
+    if (sqlite3_prepare_v2(ctx->db, sql, -1, stmt, NULL) != SQLITE_OK)
+    {
+        return LITESTORE_ERR;
+    }
+    return LITESTORE_OK;
+}
+
 int ls_prepare_statements(litestore* ctx)
 {
-    const char* save_key =
-        "INSERT INTO objects (name, type) VALUES (?, ?);";
-    if (sqlite3_prepare_v2(ctx->db,
-                           save_key,
-                           -1,
-                           &(ctx->save_key),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* save_raw_data =
-        "INSERT INTO raw_data (id, raw_value) VALUES (?, ?);";
-    if (sqlite3_prepare_v2(ctx->db,
-                           save_raw_data,
-                           -1,
-                           &(ctx->save_raw_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* update_raw_data =
-        "UPDATE raw_data SET raw_value = ? WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           update_raw_data,
-                           -1,
-                           &(ctx->update_raw_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* delete_key =
-        "DELETE FROM objects WHERE name = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           delete_key,
-                           -1,
-                           &(ctx->delete_key),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* get_key =
-        "SELECT id, type FROM objects WHERE name = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           get_key,
-                           -1,
-                           &(ctx->get_key),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* get_raw_data =
-        "SELECT raw_value FROM raw_data WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           get_raw_data,
-                           -1,
-                           &(ctx->get_raw_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* update_type =
-        "UPDATE objects SET type = ? WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           update_type,
-                           -1,
-                           &(ctx->update_type),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* delete_raw_data =
-        "DELETE FROM raw_data WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           delete_raw_data,
-                           -1,
-                           &(ctx->delete_raw_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* begin_tx = "BEGIN IMMEDIATE TRANSACTION;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           begin_tx,
-                           -1,
-                           &(ctx->begin_tx),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* commit_tx = "COMMIT TRANSACTION;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           commit_tx,
-                           -1,
-                           &(ctx->commit_tx),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* rollback_tx = "ROLLBACK TRANSACTION;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           rollback_tx,
-                           -1,
-                           &(ctx->rollback_tx),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* save_kv_data =
-        "INSERT INTO kv_data (id, kv_key, kv_value) "
-        "VALUES (?, ?, ?);";
-    if (sqlite3_prepare_v2(ctx->db,
-                           save_kv_data,
-                           -1,
-                           &(ctx->save_kv_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* update_kv_data =
-        "UPDATE kv_data SET kv_value = ? WHERE id = ? AND kv_key = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           update_kv_data,
-                           -1,
-                           &(ctx->update_kv_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* get_kv_data =
-        "SELECT kv_key, kv_value FROM kv_data WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           get_kv_data,
-                           -1,
-                           &(ctx->get_kv_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* delete_kv_data =
-        "DELETE FROM kv_data WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           delete_kv_data,
-                           -1,
-                           &(ctx->delete_kv_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    /* array */
-    const char* save_array_data =
-        "INSERT INTO array_data (id, array_index, array_value) "
-        "VALUES (?, ?, ?);";
-    if (sqlite3_prepare_v2(ctx->db,
-                           save_array_data,
-                           -1,
-                           &(ctx->save_array_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* get_array_data =
-        "SELECT array_index, array_value FROM array_data WHERE id = ? "
-        "ORDER BY array_index;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           get_array_data,
-                           -1,
-                           &(ctx->get_array_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* update_array_data =
-        "UPDATE array_data SET array_value = ? "
-        "WHERE id = ? AND array_index = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           update_array_data,
-                           -1,
-                           &(ctx->update_array_data),
-                           NULL)
-        != SQLITE_OK)
-    {
-        ls_print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    const char* delete_array_data =
-        "DELETE FROM array_data WHERE id = ?;";
-    if (sqlite3_prepare_v2(ctx->db,
-                           delete_array_data,
-                           -1,
-                           &(ctx->delete_array_data),
-                           NULL)
-        != SQLITE_OK)
+    /* object */
+    if (prepare_stmt(ctx,
+                     "INSERT INTO objects (name, type) VALUES (?, ?);",
+                     &(ctx->save_key)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "SELECT id, type FROM objects WHERE name = ?;",
+                        &(ctx->get_key)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "DELETE FROM objects WHERE name = ?;",
+                        &(ctx->delete_key)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "UPDATE objects SET type = ? WHERE id = ?;",
+                        &(ctx->update_type)) != LITESTORE_OK
+        /* tx */
+        || prepare_stmt(ctx,
+                        "BEGIN IMMEDIATE TRANSACTION;",
+                        &(ctx->begin_tx)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "COMMIT TRANSACTION;",
+                        &(ctx->commit_tx)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "ROLLBACK TRANSACTION;",
+                        &(ctx->rollback_tx)) != LITESTORE_OK
+        /* raw */
+        || prepare_stmt(ctx,
+                        "INSERT INTO raw_data (id, raw_value) VALUES (?, ?);",
+                        &(ctx->save_raw_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "SELECT raw_value FROM raw_data WHERE id = ?;",
+                        &(ctx->get_raw_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "UPDATE raw_data SET raw_value = ? WHERE id = ?;",
+                        &(ctx->update_raw_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "DELETE FROM raw_data WHERE id = ?;",
+                        &(ctx->delete_raw_data)) != LITESTORE_OK
+        /* array */
+        || prepare_stmt(ctx,
+                        "INSERT INTO array_data (id, array_index, array_value) "
+                        "VALUES (?, ?, ?);",
+                        &(ctx->save_array_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "SELECT array_index, array_value FROM array_data "
+                        "WHERE id = ? ORDER BY array_index;",
+                        &(ctx->get_array_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "UPDATE array_data SET array_value = ? "
+                        "WHERE id = ? AND array_index = ?;",
+                        &(ctx->update_array_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "DELETE FROM array_data WHERE id = ?;",
+                        &(ctx->delete_array_data)) != LITESTORE_OK
+        /* kv */
+        || prepare_stmt(ctx,
+                        "INSERT INTO kv_data (id, kv_key, kv_value) "
+                        "VALUES (?, ?, ?);",
+                        &(ctx->save_kv_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "SELECT kv_key, kv_value FROM kv_data WHERE id = ?;",
+                        &(ctx->get_kv_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "UPDATE kv_data SET kv_value = ? "
+                        "WHERE id = ? AND kv_key = ?;",
+                        &(ctx->update_kv_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "DELETE FROM kv_data WHERE id = ?;",
+                        &(ctx->delete_kv_data)) != LITESTORE_OK)
     {
         ls_print_sqlite_error(ctx);
         return LITESTORE_ERR;
@@ -346,45 +197,39 @@ int ls_prepare_statements(litestore* ctx)
     return LITESTORE_OK;
 }
 
+inline
+void finalize_stmt(sqlite3_stmt** stmt)
+{
+    sqlite3_finalize(*stmt);
+    *stmt = NULL;
+}
+
 int ls_finalize_statements(litestore* ctx)
 {
-    sqlite3_finalize(ctx->save_key);
-    ctx->save_key = NULL;
-    sqlite3_finalize(ctx->save_raw_data);
-    ctx->save_raw_data = NULL;
-    sqlite3_finalize(ctx->update_raw_data);
-    ctx->update_raw_data = NULL;
-    sqlite3_finalize(ctx->delete_key);
-    ctx->delete_key = NULL;
-    sqlite3_finalize(ctx->get_key);
-    ctx->get_key = NULL;
-    sqlite3_finalize(ctx->get_raw_data);
-    ctx->get_raw_data = NULL;
-    sqlite3_finalize(ctx->update_type);
-    ctx->update_type = NULL;
-    sqlite3_finalize(ctx->delete_raw_data);
-    ctx->delete_raw_data = NULL;
-    sqlite3_finalize(ctx->begin_tx);
-    ctx->begin_tx = NULL;
-    sqlite3_finalize(ctx->commit_tx);
-    ctx->commit_tx = NULL;
-    sqlite3_finalize(ctx->rollback_tx);
-    ctx->rollback_tx = NULL;
-    sqlite3_finalize(ctx->save_kv_data);
-    ctx->save_kv_data = NULL;
-    sqlite3_finalize(ctx->update_kv_data);
-    ctx->update_kv_data = NULL;
-    sqlite3_finalize(ctx->get_kv_data);
-    ctx->get_kv_data = NULL;
-    sqlite3_finalize(ctx->delete_kv_data);
-    ctx->delete_kv_data = NULL;
+    /* object */
+    finalize_stmt(&(ctx->save_key));
+    finalize_stmt(&(ctx->get_key));
+    finalize_stmt(&(ctx->delete_key));
+    finalize_stmt(&(ctx->update_type));
+    /* tx */
+    finalize_stmt(&(ctx->begin_tx));
+    finalize_stmt(&(ctx->commit_tx));
+    finalize_stmt(&(ctx->rollback_tx));
+    /* raw */
+    finalize_stmt(&(ctx->save_raw_data));
+    finalize_stmt(&(ctx->get_raw_data));
+    finalize_stmt(&(ctx->update_raw_data));
+    finalize_stmt(&(ctx->delete_raw_data));
     /* array */
-    sqlite3_finalize(ctx->save_array_data);
-    ctx->save_array_data = NULL;
-    sqlite3_finalize(ctx->get_array_data);
-    ctx->get_array_data = NULL;
-    sqlite3_finalize(ctx->update_array_data);
-    ctx->update_array_data = NULL;
+    finalize_stmt(&(ctx->save_array_data));
+    finalize_stmt(&(ctx->get_array_data));
+    finalize_stmt(&(ctx->update_array_data));
+    finalize_stmt(&(ctx->delete_array_data));
+    /* kv */
+    finalize_stmt(&(ctx->save_kv_data));
+    finalize_stmt(&(ctx->get_kv_data));
+    finalize_stmt(&(ctx->update_kv_data));
+    finalize_stmt(&(ctx->delete_kv_data));
 
     return LITESTORE_OK;
 }
