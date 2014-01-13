@@ -804,7 +804,7 @@ int opt_end_tx(litestore* ctx, int status)
 int get_kv_data(litestore* ctx,
                 const litestore_id_t id,
                 const void* key, const size_t key_len,
-                ls_get_kv_cb callback, void* user_data)
+                litestore_get_kv_cb callback, void* user_data)
 {
     int rv = LITESTORE_ERR;
 
@@ -857,7 +857,7 @@ int get_kv_data(litestore* ctx,
 int get_array_data(litestore* ctx,
                    const litestore_id_t id,
                    const void* key, const size_t key_len,
-                   ls_get_array_cb callback, void* user_data)
+                   litestore_get_array_cb callback, void* user_data)
 {
     int rv = LITESTORE_ERR;
 
@@ -914,6 +914,9 @@ void* litestore_native_ctx(litestore* ctx)
     return ctx->db;
 }
 
+/*-----------------------------------------*/
+/*---------------- construction -----------*/
+/*-----------------------------------------*/
 int litestore_open(const char* db_file_name, litestore** ctx)
 {
     *ctx = (litestore*)malloc(sizeof(litestore));
@@ -947,6 +950,9 @@ void litestore_close(litestore* ctx)
     }
 }
 
+/*-----------------------------------------*/
+/*---------------- tx ---------------------*/
+/*-----------------------------------------*/
 int litestore_begin_tx(litestore* ctx)
 {
     const int rv = run_stmt(ctx, ctx->begin_tx);
@@ -977,6 +983,30 @@ int litestore_rollback_tx(litestore* ctx)
     return rv;
 }
 
+/*-----------------------------------------*/
+/*---------------- null -------------------*/
+/*-----------------------------------------*/
+int litestore_save_null(litestore* ctx,
+                        const char* key, const size_t key_len)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0)
+    {
+        int own_tx = opt_begin_tx(ctx);
+
+        litestore_id_t new_id = 0;
+        rv = save_key(ctx, key, key_len, LS_NULL, &new_id);
+
+        if (own_tx)
+        {
+            opt_end_tx(ctx, rv);
+        }
+    }
+
+    return rv;
+}
+
 int litestore_get_null(litestore* ctx,
                        const char* key, const size_t key_len)
 {
@@ -994,27 +1024,6 @@ int litestore_get_null(litestore* ctx,
         {
             rv = LITESTORE_ERR;
         }
-
-        if (own_tx)
-        {
-            opt_end_tx(ctx, rv);
-        }
-    }
-
-    return rv;
-}
-
-int litestore_save_null(litestore* ctx,
-                        const char* key, const size_t key_len)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx && key && key_len > 0)
-    {
-        int own_tx = opt_begin_tx(ctx);
-
-        litestore_id_t new_id = 0;
-        rv = save_key(ctx, key, key_len, LS_NULL, &new_id);
 
         if (own_tx)
         {
@@ -1057,6 +1066,35 @@ int litestore_update_null(litestore* ctx,
     return rv;
 }
 
+/*-----------------------------------------*/
+/*---------------- raw --------------------*/
+/*-----------------------------------------*/
+int litestore_save_raw(litestore* ctx,
+                       const char* key, const size_t key_len,
+                       const void* value, const size_t value_len)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0 && value && value_len > 0)
+    {
+        int own_tx = opt_begin_tx(ctx);
+
+        litestore_id_t new_id = 0;
+        rv = save_key(ctx, key, key_len, LS_RAW, &new_id);
+        if (rv == LITESTORE_OK)
+        {
+            rv = save_raw_data(ctx, new_id, value, value_len);
+        }
+
+        if (own_tx)
+        {
+            opt_end_tx(ctx, rv);
+        }
+    }
+
+    return rv;
+}
+
 int litestore_get_raw(litestore* ctx,
                       const char* key, const size_t key_len,
                       litestore_get_raw_cb callback, void* user_data)
@@ -1078,32 +1116,6 @@ int litestore_get_raw(litestore* ctx,
         else
         {
             rv = LITESTORE_ERR;
-        }
-
-        if (own_tx)
-        {
-            opt_end_tx(ctx, rv);
-        }
-    }
-
-    return rv;
-}
-
-int litestore_save_raw(litestore* ctx,
-                       const char* key, const size_t key_len,
-                       const void* value, const size_t value_len)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx && key && key_len > 0 && value && value_len > 0)
-    {
-        int own_tx = opt_begin_tx(ctx);
-
-        litestore_id_t new_id = 0;
-        rv = save_key(ctx, key, key_len, LS_RAW, &new_id);
-        if (rv == LITESTORE_OK)
-        {
-            rv = save_raw_data(ctx, new_id, value, value_len);
         }
 
         if (own_tx)
@@ -1150,99 +1162,9 @@ int litestore_update_raw(litestore* ctx,
     return rv;
 }
 
-int litestore_save_kv(litestore* ctx,
-                      const char* key, const size_t key_len,
-                      litestore_kv_iterator data)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx && key && key_len > 0)
-    {
-        int own_tx = opt_begin_tx(ctx);
-
-        litestore_id_t new_id = 0;
-        rv = save_key(ctx, key, key_len, LS_KV, &new_id);
-        if (rv == LITESTORE_OK)
-        {
-            rv = save_kv_data(ctx, new_id, &data);
-        }
-
-        if (own_tx)
-        {
-            opt_end_tx(ctx, rv);
-        }
-    }
-
-    return rv;
-}
-
-int litestore_get_kv(litestore* ctx,
-                     const char* key, const size_t key_len,
-                     ls_get_kv_cb callback, void* user_data)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx && key && key_len > 0)
-    {
-        int own_tx = opt_begin_tx(ctx);
-
-        litestore_id_t id = 0;
-        int type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &type);
-
-        if (rv == LITESTORE_OK && type == LS_KV)
-        {
-            rv = get_kv_data(ctx, id, key, key_len, callback, user_data);
-        }
-        else
-        {
-            rv = LITESTORE_ERR;
-        }
-
-        if (own_tx)
-        {
-            opt_end_tx(ctx, rv);
-        }
-    }
-
-    return rv;
-}
-
-int litestore_update_kv(litestore* ctx,
-                        const char* key, const size_t key_len,
-                        litestore_kv_iterator data)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx && key && key_len > 0)
-    {
-        int own_tx = opt_begin_tx(ctx);
-
-        litestore_id_t id = 0;
-        int old_type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &old_type);
-        if (rv == LITESTORE_OK)
-        {
-            rv = update_kv_data(ctx, id, old_type, &data);
-            if (rv == LITESTORE_OK && old_type != LS_KV)
-            {
-                rv = update_type(ctx, id, LS_KV);
-            }
-        }
-        else if (rv == LITESTORE_UNKNOWN_ENTITY)
-        {
-            rv = litestore_save_kv(ctx, key, key_len, data);
-        }
-
-        if (own_tx)
-        {
-            opt_end_tx(ctx, rv);
-        }
-    }
-
-    return rv;
-}
-
+/*-----------------------------------------*/
+/*---------------- array ------------------*/
+/*-----------------------------------------*/
 int litestore_save_array(litestore* ctx,
                          const char* key, const size_t key_len,
                          litestore_array_iterator data)
@@ -1271,7 +1193,7 @@ int litestore_save_array(litestore* ctx,
 
 int litestore_get_array(litestore* ctx,
                         const char* key, const size_t key_len,
-                        ls_get_array_cb callback, void* user_data)
+                        litestore_get_array_cb callback, void* user_data)
 {
     int rv = LITESTORE_ERR;
 
@@ -1336,6 +1258,105 @@ int litestore_update_array(litestore* ctx,
     return rv;
 }
 
+/*-----------------------------------------*/
+/*---------------- kv ---------------------*/
+/*-----------------------------------------*/
+int litestore_save_kv(litestore* ctx,
+                      const char* key, const size_t key_len,
+                      litestore_kv_iterator data)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0)
+    {
+        int own_tx = opt_begin_tx(ctx);
+
+        litestore_id_t new_id = 0;
+        rv = save_key(ctx, key, key_len, LS_KV, &new_id);
+        if (rv == LITESTORE_OK)
+        {
+            rv = save_kv_data(ctx, new_id, &data);
+        }
+
+        if (own_tx)
+        {
+            opt_end_tx(ctx, rv);
+        }
+    }
+
+    return rv;
+}
+
+int litestore_get_kv(litestore* ctx,
+                     const char* key, const size_t key_len,
+                     litestore_get_kv_cb callback, void* user_data)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0)
+    {
+        int own_tx = opt_begin_tx(ctx);
+
+        litestore_id_t id = 0;
+        int type = -1;
+        rv = get_key_type(ctx, key, key_len, &id, &type);
+
+        if (rv == LITESTORE_OK && type == LS_KV)
+        {
+            rv = get_kv_data(ctx, id, key, key_len, callback, user_data);
+        }
+        else
+        {
+            rv = LITESTORE_ERR;
+        }
+
+        if (own_tx)
+        {
+            opt_end_tx(ctx, rv);
+        }
+    }
+
+    return rv;
+}
+
+int litestore_update_kv(litestore* ctx,
+                        const char* key, const size_t key_len,
+                        litestore_kv_iterator data)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && key && key_len > 0)
+    {
+        int own_tx = opt_begin_tx(ctx);
+
+        litestore_id_t id = 0;
+        int old_type = -1;
+        rv = get_key_type(ctx, key, key_len, &id, &old_type);
+        if (rv == LITESTORE_OK)
+        {
+            rv = update_kv_data(ctx, id, old_type, &data);
+            if (rv == LITESTORE_OK && old_type != LS_KV)
+            {
+                rv = update_type(ctx, id, LS_KV);
+            }
+        }
+        else if (rv == LITESTORE_UNKNOWN_ENTITY)
+        {
+            rv = litestore_save_kv(ctx, key, key_len, data);
+        }
+
+        if (own_tx)
+        {
+            opt_end_tx(ctx, rv);
+        }
+    }
+
+    return rv;
+}
+
+/*-----------------------------------------*/
+/*---------------- delete -----------------*/
+/*-----------------------------------------*/
 int litestore_delete(litestore* ctx,
                      const char* key, const size_t key_len)
 {
