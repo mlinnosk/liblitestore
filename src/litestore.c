@@ -462,10 +462,8 @@ int get_raw_data(litestore* ctx,
             print_sqlite_error(ctx);
             return LITESTORE_ERR;
         }
-        const void* raw_data = sqlite3_column_blob(ctx->get_raw_data,
-                                                   0);
-        const int bytes = sqlite3_column_bytes(ctx->get_raw_data,
-                                               0);
+        const void* raw_data = sqlite3_column_blob(ctx->get_raw_data, 0);
+        const int bytes = sqlite3_column_bytes(ctx->get_raw_data, 0);
         if (bytes > 0)
         {
             return (*callback)(raw_data, bytes, user_data);
@@ -866,7 +864,7 @@ int get_kv_data(litestore* ctx,
                     print_sqlite_error(ctx);
                     break;
                 }
-            }  // while
+            }  /* while */
             if (rc == SQLITE_DONE)
             {
                 rv = LITESTORE_OK;
@@ -905,9 +903,7 @@ int get_array_data(litestore* ctx,
                         sqlite3_column_blob(ctx->get_array_data, 1);
                     const int v_len =
                         sqlite3_column_bytes(ctx->get_array_data, 1);
-                    if ((*callback)(key, key_len,
-                                    index, v, v_len,
-                                    user_data)
+                    if ((*callback)(key, key_len, index, v, v_len, user_data)
                         != LITESTORE_OK)
                     {
                         break;
@@ -918,7 +914,7 @@ int get_array_data(litestore* ctx,
                     print_sqlite_error(ctx);
                     break;
                 }
-            }  // while
+            }  /* while */
             if (rc == SQLITE_DONE)
             {
                 rv = LITESTORE_OK;
