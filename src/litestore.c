@@ -90,11 +90,13 @@ enum
 /* The native db ID type */
 typedef sqlite3_int64 litestore_id_t;
 
+static
 void print_sqlite_error(litestore* ctx)
 {
     printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
 }
 
+static
 int init_db(litestore* ctx)
 {
     if (sqlite3_exec(ctx->db, LITESTORE_SCHEMA_V1, NULL, NULL, NULL)
@@ -110,7 +112,7 @@ int init_db(litestore* ctx)
     return LITESTORE_ERR;
 }
 
-inline
+static
 int prepare_stmt(litestore* ctx, const char* sql, sqlite3_stmt** stmt)
 {
     if (sqlite3_prepare_v2(ctx->db, sql, -1, stmt, NULL) != SQLITE_OK)
@@ -120,6 +122,7 @@ int prepare_stmt(litestore* ctx, const char* sql, sqlite3_stmt** stmt)
     return LITESTORE_OK;
 }
 
+static
 int prepare_statements(litestore* ctx)
 {
     /* object */
@@ -197,13 +200,14 @@ int prepare_statements(litestore* ctx)
     return LITESTORE_OK;
 }
 
-inline
+static
 void finalize_stmt(sqlite3_stmt** stmt)
 {
     sqlite3_finalize(*stmt);
     *stmt = NULL;
 }
 
+static
 int finalize_statements(litestore* ctx)
 {
     /* object */
@@ -238,7 +242,7 @@ int finalize_statements(litestore* ctx)
 /*-----------------------------------------*/
 /*----------------- SAVE ------------------*/
 /*-----------------------------------------*/
-
+static
 int save_key(litestore* ctx,
                 const char* key, const size_t key_len,
                 const int data_type,
@@ -270,6 +274,7 @@ int save_key(litestore* ctx,
     return LITESTORE_ERR;
 }
 
+static
 int save_raw_data(litestore* ctx,
                      const litestore_id_t new_id,
                      const void* value, const size_t value_len)
@@ -297,6 +302,7 @@ int save_raw_data(litestore* ctx,
     return LITESTORE_ERR;
 }
 
+static
 int save_kv(litestore* ctx, const litestore_id_t id,
             const void* key, const size_t key_len,
             const void* value, const size_t value_len)
@@ -324,6 +330,7 @@ int save_kv(litestore* ctx, const litestore_id_t id,
     return rv;
 }
 
+static
 int save_kv_data(litestore* ctx, const litestore_id_t new_id,
                  litestore_kv_iterator* data)
 {
@@ -350,6 +357,7 @@ int save_kv_data(litestore* ctx, const litestore_id_t new_id,
     return LITESTORE_OK;
 }
 
+static
 int save_array(litestore* ctx, const litestore_id_t id,
                const unsigned index,
                const void* value, const size_t value_len)
@@ -376,6 +384,7 @@ int save_array(litestore* ctx, const litestore_id_t id,
     return rv;
 }
 
+static
 int save_array_data(litestore* ctx, const litestore_id_t new_id,
                     litestore_array_iterator* data)
 {
@@ -404,7 +413,7 @@ int save_array_data(litestore* ctx, const litestore_id_t new_id,
 /*-----------------------------------------*/
 /*----------------- GET -------------------*/
 /*-----------------------------------------*/
-
+static
 int get_key_type(litestore* ctx,
                     const char* key, const size_t key_len,
                     litestore_id_t* id, int* type)
@@ -433,6 +442,7 @@ int get_key_type(litestore* ctx,
     return LITESTORE_ERR;
 }
 
+static
 int get_raw_data(litestore* ctx,
                     const litestore_id_t id,
                     litestore_get_raw_cb callback, void* user_data)
@@ -464,6 +474,7 @@ int get_raw_data(litestore* ctx,
     return LITESTORE_ERR;
 }
 
+static
 int update_type(litestore* ctx,
                    const litestore_id_t id, const int type)
 {
@@ -483,6 +494,7 @@ int update_type(litestore* ctx,
     return LITESTORE_OK;
 }
 
+static
 int delete_raw_data(litestore*ctx, const litestore_id_t id)
 {
     if (ctx->delete_raw_data)
@@ -506,6 +518,7 @@ int delete_raw_data(litestore*ctx, const litestore_id_t id)
     return LITESTORE_OK;
 }
 
+static
 int delete_kv_data(litestore* ctx, const litestore_id_t id)
 {
     int rv = LITESTORE_ERR;
@@ -527,6 +540,7 @@ int delete_kv_data(litestore* ctx, const litestore_id_t id)
     return rv;
 }
 
+static
 int delete_array_data(litestore* ctx, const litestore_id_t id)
 {
     int rv = LITESTORE_ERR;
@@ -548,6 +562,7 @@ int delete_array_data(litestore* ctx, const litestore_id_t id)
     return rv;
 }
 
+static
 int update_null(litestore* ctx,
                    const litestore_id_t id, const int old_type)
 {
@@ -569,6 +584,7 @@ int update_null(litestore* ctx,
     return rv;
 }
 
+static
 int update_raw_data(litestore* ctx,
                        const litestore_id_t id, const int old_type,
                        const void* value, const size_t value_len)
@@ -615,6 +631,7 @@ int update_raw_data(litestore* ctx,
     return rv;
 }
 
+static
 int update_kv(litestore* ctx, const litestore_id_t id,
               const void* key, const size_t key_len,
               const void* value, const size_t value_len)
@@ -646,6 +663,7 @@ int update_kv(litestore* ctx, const litestore_id_t id,
     return rv;
 }
 
+static
 int update_kv_data(litestore* ctx,
                    const litestore_id_t id, const int old_type,
                    litestore_kv_iterator* data)
@@ -688,6 +706,7 @@ int update_kv_data(litestore* ctx,
     return rv;
 }
 
+static
 int update_array(litestore* ctx, const litestore_id_t id,
                  const unsigned index,
                  const void* value, const size_t value_len)
@@ -718,6 +737,7 @@ int update_array(litestore* ctx, const litestore_id_t id,
     return rv;
 }
 
+static
 int update_array_data(litestore* ctx,
                       const litestore_id_t id, const int old_type,
                       litestore_array_iterator* data)
@@ -757,6 +777,7 @@ int update_array_data(litestore* ctx,
     return rv;
 }
 
+static
 int run_stmt(litestore* ctx, sqlite3_stmt* stmt)
 {
     int rv = LITESTORE_ERR;
@@ -780,6 +801,7 @@ int run_stmt(litestore* ctx, sqlite3_stmt* stmt)
 /**
  * @return 1 on success, 0 on error (boolean value)
  */
+static
 int opt_begin_tx(litestore* ctx)
 {
     if (!ctx->tx_active && litestore_begin_tx(ctx) == LITESTORE_OK)
@@ -792,6 +814,7 @@ int opt_begin_tx(litestore* ctx)
 /**
  * @return Return value of the tx function called.
  */
+static
 int opt_end_tx(litestore* ctx, int status)
 {
     if (status == LITESTORE_OK)
@@ -801,6 +824,7 @@ int opt_end_tx(litestore* ctx, int status)
     return litestore_rollback_tx(ctx);
 }
 
+static
 int get_kv_data(litestore* ctx,
                 const litestore_id_t id,
                 const void* key, const size_t key_len,
@@ -854,6 +878,7 @@ int get_kv_data(litestore* ctx,
     return rv;
 }
 
+static
 int get_array_data(litestore* ctx,
                    const litestore_id_t id,
                    const void* key, const size_t key_len,
