@@ -3,7 +3,7 @@
 CC = gcc # C compiler
 CCPP = g++
 # CFLAGS = -Wall -O2 -fPIC
-CFLAGS = -fPIC -Wall -Wextra -O2 -g # C flags
+CFLAGS = -fPIC -Wall -Wextra -Werror -std=c99 -O2 -g # C flags
 LDFLAGS = -shared  # linking flags
 RM = rm -f  # rm command
 LIB_NAME = litestore
