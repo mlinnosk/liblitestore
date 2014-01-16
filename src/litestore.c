@@ -15,7 +15,7 @@ extern "C"
 /**
  * The DB schema.
  */
-#define LITESTORE_SCHEMA_V1                                \
+#define LITESTORE_SCHEMA_V1                             \
     "CREATE TABLE IF NOT EXISTS meta("                  \
     "       schema_version INTEGER NOT NULL DEFAULT 1"  \
     ");"                                                \
@@ -90,12 +90,67 @@ enum
 /* The native db ID type */
 typedef sqlite3_int64 litestore_id_t;
 
+
+/*-----------------------------------------*/
+/*----------------- HELPERS ---------------*/
+/*-----------------------------------------*/
 static
 void print_sqlite_error(litestore* ctx)
 {
     printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
 }
 
+static
+int run_stmt(litestore* ctx, sqlite3_stmt* stmt)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx && stmt)
+    {
+        if (sqlite3_step(stmt) == SQLITE_DONE)
+        {
+            rv = LITESTORE_OK;
+        }
+        else
+        {
+            print_sqlite_error(ctx);
+        }
+    }
+    sqlite3_reset(stmt);
+
+    return rv;
+}
+
+/**
+ * @return 1 on success, 0 on error (boolean value)
+ */
+static
+int opt_begin_tx(litestore* ctx)
+{
+    if (!ctx->tx_active && litestore_begin_tx(ctx) == LITESTORE_OK)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * @return Return value of the tx function called.
+ */
+static
+int opt_end_tx(litestore* ctx, int status)
+{
+    if (status == LITESTORE_OK)
+    {
+        return litestore_commit_tx(ctx);
+    }
+    return litestore_rollback_tx(ctx);
+}
+
+
+/*-----------------------------------------*/
+/*----------------- INIT ------------------*/
+/*-----------------------------------------*/
 static
 int init_db(litestore* ctx)
 {
@@ -244,9 +299,9 @@ int finalize_statements(litestore* ctx)
 /*-----------------------------------------*/
 static
 int save_key(litestore* ctx,
-                const char* key, const size_t key_len,
-                const int data_type,
-                litestore_id_t* id)
+             const char* key, const size_t key_len,
+             const int data_type,
+             litestore_id_t* id)
 {
     if (ctx->save_key)
     {
@@ -276,8 +331,8 @@ int save_key(litestore* ctx,
 
 static
 int save_raw_data(litestore* ctx,
-                     const litestore_id_t new_id,
-                     const void* value, const size_t value_len)
+                  const litestore_id_t new_id,
+                  const void* value, const size_t value_len)
 {
     if (ctx->save_raw_data)
     {
@@ -300,6 +355,58 @@ int save_raw_data(litestore* ctx,
         return LITESTORE_OK;
     }
     return LITESTORE_ERR;
+}
+
+static
+int save_array(litestore* ctx, const litestore_id_t id,
+               const unsigned index,
+               const void* value, const size_t value_len)
+{
+    int rv = LITESTORE_ERR;
+
+    if (value && value_len > 0)
+    {
+        if (sqlite3_bind_int64(ctx->save_array_data, 1, id) == SQLITE_OK
+            && sqlite3_bind_int64(ctx->save_array_data, 2, index) == SQLITE_OK
+            && sqlite3_bind_blob(ctx->save_array_data, 3, value, value_len,
+                                 SQLITE_STATIC) == SQLITE_OK
+            && sqlite3_step(ctx->save_array_data) == SQLITE_DONE)
+        {
+            rv = LITESTORE_OK;
+        }
+        else
+        {
+            print_sqlite_error(ctx);
+        }
+        sqlite3_reset(ctx->save_array_data);
+    }
+
+    return rv;
+}
+
+static
+int save_array_data(litestore* ctx, const litestore_id_t new_id,
+                    litestore_array_iterator* data)
+{
+    unsigned index = 0;
+    const void* v = NULL;
+    size_t v_len = 0;
+
+    for (data->begin(data->user_data);
+         !data->end(data->user_data);
+         data->next(data->user_data))
+    {
+        data->value(data->user_data, &v, &v_len);
+        if (save_array(ctx, new_id, index, v, v_len) != LITESTORE_OK)
+        {
+            return LITESTORE_ERR;
+        }
+        v = NULL;
+        v_len = 0;
+        ++index;
+    }
+
+    return LITESTORE_OK;
 }
 
 static
@@ -357,66 +464,14 @@ int save_kv_data(litestore* ctx, const litestore_id_t new_id,
     return LITESTORE_OK;
 }
 
-static
-int save_array(litestore* ctx, const litestore_id_t id,
-               const unsigned index,
-               const void* value, const size_t value_len)
-{
-    int rv = LITESTORE_ERR;
-
-    if (value && value_len > 0)
-    {
-        if (sqlite3_bind_int64(ctx->save_array_data, 1, id) == SQLITE_OK
-            && sqlite3_bind_int64(ctx->save_array_data, 2, index) == SQLITE_OK
-            && sqlite3_bind_blob(ctx->save_array_data, 3, value, value_len,
-                                 SQLITE_STATIC) == SQLITE_OK
-            && sqlite3_step(ctx->save_array_data) == SQLITE_DONE)
-        {
-            rv = LITESTORE_OK;
-        }
-        else
-        {
-            print_sqlite_error(ctx);
-        }
-        sqlite3_reset(ctx->save_array_data);
-    }
-
-    return rv;
-}
-
-static
-int save_array_data(litestore* ctx, const litestore_id_t new_id,
-                    litestore_array_iterator* data)
-{
-    unsigned index = 0;
-    const void* v = NULL;
-    size_t v_len = 0;
-
-    for (data->begin(data->user_data);
-         !data->end(data->user_data);
-         data->next(data->user_data))
-    {
-        data->value(data->user_data, &v, &v_len);
-        if (save_array(ctx, new_id, index, v, v_len) != LITESTORE_OK)
-        {
-            return LITESTORE_ERR;
-        }
-        v = NULL;
-        v_len = 0;
-        ++index;
-    }
-
-    return LITESTORE_OK;
-}
-
 
 /*-----------------------------------------*/
 /*----------------- GET -------------------*/
 /*-----------------------------------------*/
 static
 int get_key_type(litestore* ctx,
-                    const char* key, const size_t key_len,
-                    litestore_id_t* id, int* type)
+                 const char* key, const size_t key_len,
+                 litestore_id_t* id, int* type)
 {
     if (ctx->get_key && key && key_len > 0)
     {
@@ -444,8 +499,8 @@ int get_key_type(litestore* ctx,
 
 static
 int get_raw_data(litestore* ctx,
-                    const litestore_id_t id,
-                    litestore_get_raw_cb callback, void* user_data)
+                 const litestore_id_t id,
+                 litestore_get_raw_cb callback, void* user_data)
 {
     if (ctx->get_raw_data)
     {
@@ -473,25 +528,113 @@ int get_raw_data(litestore* ctx,
 }
 
 static
-int update_type(litestore* ctx,
-                   const litestore_id_t id, const int type)
+int get_array_data(litestore* ctx,
+                   const litestore_id_t id,
+                   const void* key, const size_t key_len,
+                   litestore_get_array_cb callback, void* user_data)
 {
-    sqlite3_reset(ctx->update_type);
-    if (sqlite3_bind_int(ctx->update_type, 1, type) != SQLITE_OK
-        || sqlite3_bind_int64(ctx->update_type, 2, id) != SQLITE_OK)
+    int rv = LITESTORE_ERR;
+
+    if (ctx->get_array_data && callback)
     {
-        print_sqlite_error(ctx);
-        return LITESTORE_ERR;
-    }
-    if (sqlite3_step(ctx->update_type) != SQLITE_DONE)
-    {
-        print_sqlite_error(ctx);
-        return LITESTORE_ERR;
+        if (sqlite3_bind_int64(ctx->get_array_data, 1, id) != SQLITE_OK)
+        {
+            print_sqlite_error(ctx);
+        }
+        else
+        {
+            int rc = 0;
+            while ((rc = sqlite3_step(ctx->get_array_data)) != SQLITE_DONE)
+            {
+                if (rc == SQLITE_ROW)
+                {
+                    const unsigned index =
+                        (unsigned)sqlite3_column_int64(ctx->get_array_data, 0);
+                    const void* v =
+                        sqlite3_column_blob(ctx->get_array_data, 1);
+                    const int v_len =
+                        sqlite3_column_bytes(ctx->get_array_data, 1);
+                    if ((*callback)(key, key_len, index, v, v_len, user_data)
+                        != LITESTORE_OK)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    print_sqlite_error(ctx);
+                    break;
+                }
+            }  /* while */
+            if (rc == SQLITE_DONE)
+            {
+                rv = LITESTORE_OK;
+            }
+        }
+        sqlite3_reset(ctx->get_array_data);
     }
 
-    return LITESTORE_OK;
+    return rv;
 }
 
+static
+int get_kv_data(litestore* ctx,
+                const litestore_id_t id,
+                const void* key, const size_t key_len,
+                litestore_get_kv_cb callback, void* user_data)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx->get_kv_data && callback)
+    {
+        if (sqlite3_bind_int64(ctx->get_kv_data, 1, id) != SQLITE_OK)
+        {
+            print_sqlite_error(ctx);
+        }
+        else
+        {
+            int rc = 0;
+            while ((rc = sqlite3_step(ctx->get_kv_data)) != SQLITE_DONE)
+            {
+                if (rc == SQLITE_ROW)
+                {
+                    const void* k =
+                        sqlite3_column_blob(ctx->get_kv_data, 0);
+                    const int k_len =
+                        sqlite3_column_bytes(ctx->get_kv_data, 0);
+                    const void* v =
+                        sqlite3_column_blob(ctx->get_kv_data, 1);
+                    const int v_len =
+                        sqlite3_column_bytes(ctx->get_kv_data, 1);
+                    if ((*callback)(key, key_len,
+                                    k, k_len, v, v_len,
+                                    user_data)
+                        != LITESTORE_OK)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    print_sqlite_error(ctx);
+                    break;
+                }
+            }  /* while */
+            if (rc == SQLITE_DONE)
+            {
+                rv = LITESTORE_OK;
+            }
+        }
+        sqlite3_reset(ctx->get_kv_data);
+    }
+
+    return rv;
+}
+
+
+/*-----------------------------------------*/
+/*----------------- DELETE ----------------*/
+/*-----------------------------------------*/
 static
 int delete_raw_data(litestore*ctx, const litestore_id_t id)
 {
@@ -560,9 +703,33 @@ int delete_array_data(litestore* ctx, const litestore_id_t id)
     return rv;
 }
 
+
+/*-----------------------------------------*/
+/*----------------- UPDATE ----------------*/
+/*-----------------------------------------*/
+static
+int update_type(litestore* ctx,
+                const litestore_id_t id, const int type)
+{
+    sqlite3_reset(ctx->update_type);
+    if (sqlite3_bind_int(ctx->update_type, 1, type) != SQLITE_OK
+        || sqlite3_bind_int64(ctx->update_type, 2, id) != SQLITE_OK)
+    {
+        print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+    if (sqlite3_step(ctx->update_type) != SQLITE_DONE)
+    {
+        print_sqlite_error(ctx);
+        return LITESTORE_ERR;
+    }
+
+    return LITESTORE_OK;
+}
+
 static
 int update_null(litestore* ctx,
-                   const litestore_id_t id, const int old_type)
+                const litestore_id_t id, const int old_type)
 {
     int rv = LITESTORE_OK;
 
@@ -584,8 +751,8 @@ int update_null(litestore* ctx,
 
 static
 int update_raw_data(litestore* ctx,
-                       const litestore_id_t id, const int old_type,
-                       const void* value, const size_t value_len)
+                    const litestore_id_t id, const int old_type,
+                    const void* value, const size_t value_len)
 {
     int rv = LITESTORE_OK;
 
@@ -624,6 +791,77 @@ int update_raw_data(litestore* ctx,
             rv = LITESTORE_ERR;
         }
         sqlite3_reset(ctx->update_raw_data);
+    }
+
+    return rv;
+}
+
+static
+int update_array(litestore* ctx, const litestore_id_t id,
+                 const unsigned index,
+                 const void* value, const size_t value_len)
+{
+    int rv = LITESTORE_ERR;
+
+    if (value && value_len > 0)
+    {
+        if (sqlite3_bind_blob(ctx->update_array_data, 1, value, value_len,
+                              SQLITE_STATIC) == SQLITE_OK
+            && sqlite3_bind_int64(ctx->update_array_data, 2, id) == SQLITE_OK
+            && sqlite3_bind_int64(ctx->update_array_data, 3, index) == SQLITE_OK
+            && sqlite3_step(ctx->update_array_data) == SQLITE_DONE)
+        {
+            rv = LITESTORE_OK;
+            if (sqlite3_changes(ctx->db) == 0)
+            {
+                rv = save_array(ctx, id, index, value, value_len);
+            }
+        }
+        else
+        {
+            print_sqlite_error(ctx);
+        }
+        sqlite3_reset(ctx->update_array_data);
+    }
+
+    return rv;
+}
+
+static
+int update_array_data(litestore* ctx,
+                      const litestore_id_t id, const int old_type,
+                      litestore_array_iterator* data)
+{
+    int rv = LITESTORE_OK;
+
+    switch (old_type)
+    {
+        case LS_RAW:
+            rv = delete_raw_data(ctx, id);
+            break;
+        case LS_KV:
+            rv = delete_kv_data(ctx, id);
+            break;
+    }
+    if (rv == LITESTORE_OK)
+    {
+        unsigned index = 0;
+        const void* v = NULL;
+        size_t v_len = 0;
+
+        for (data->begin(data->user_data);
+             !data->end(data->user_data);
+             data->next(data->user_data), ++index)
+        {
+            data->value(data->user_data, &v, &v_len);
+            if (update_array(ctx, id, index, v, v_len) != LITESTORE_OK)
+            {
+                rv = LITESTORE_ERR;
+                break;
+            }
+            v = NULL;
+            v_len = 0;
+        }
     }
 
     return rv;
@@ -704,227 +942,7 @@ int update_kv_data(litestore* ctx,
     return rv;
 }
 
-static
-int update_array(litestore* ctx, const litestore_id_t id,
-                 const unsigned index,
-                 const void* value, const size_t value_len)
-{
-    int rv = LITESTORE_ERR;
 
-    if (value && value_len > 0)
-    {
-        if (sqlite3_bind_blob(ctx->update_array_data, 1, value, value_len,
-                              SQLITE_STATIC) == SQLITE_OK
-            && sqlite3_bind_int64(ctx->update_array_data, 2, id) == SQLITE_OK
-            && sqlite3_bind_int64(ctx->update_array_data, 3, index) == SQLITE_OK
-            && sqlite3_step(ctx->update_array_data) == SQLITE_DONE)
-        {
-            rv = LITESTORE_OK;
-            if (sqlite3_changes(ctx->db) == 0)
-            {
-                rv = save_array(ctx, id, index, value, value_len);
-            }
-        }
-        else
-        {
-            print_sqlite_error(ctx);
-        }
-        sqlite3_reset(ctx->update_array_data);
-    }
-
-    return rv;
-}
-
-static
-int update_array_data(litestore* ctx,
-                      const litestore_id_t id, const int old_type,
-                      litestore_array_iterator* data)
-{
-    int rv = LITESTORE_OK;
-
-    switch (old_type)
-    {
-        case LS_RAW:
-            rv = delete_raw_data(ctx, id);
-            break;
-        case LS_KV:
-            rv = delete_kv_data(ctx, id);
-            break;
-    }
-    if (rv == LITESTORE_OK)
-    {
-        unsigned index = 0;
-        const void* v = NULL;
-        size_t v_len = 0;
-
-        for (data->begin(data->user_data);
-             !data->end(data->user_data);
-             data->next(data->user_data), ++index)
-        {
-            data->value(data->user_data, &v, &v_len);
-            if (update_array(ctx, id, index, v, v_len) != LITESTORE_OK)
-            {
-                rv = LITESTORE_ERR;
-                break;
-            }
-            v = NULL;
-            v_len = 0;
-        }
-    }
-
-    return rv;
-}
-
-static
-int run_stmt(litestore* ctx, sqlite3_stmt* stmt)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx && stmt)
-    {
-        if (sqlite3_step(stmt) == SQLITE_DONE)
-        {
-            rv = LITESTORE_OK;
-        }
-        else
-        {
-            print_sqlite_error(ctx);
-        }
-    }
-    sqlite3_reset(stmt);
-
-    return rv;
-}
-
-/**
- * @return 1 on success, 0 on error (boolean value)
- */
-static
-int opt_begin_tx(litestore* ctx)
-{
-    if (!ctx->tx_active && litestore_begin_tx(ctx) == LITESTORE_OK)
-    {
-        return 1;
-    }
-    return 0;
-}
-
-/**
- * @return Return value of the tx function called.
- */
-static
-int opt_end_tx(litestore* ctx, int status)
-{
-    if (status == LITESTORE_OK)
-    {
-        return litestore_commit_tx(ctx);
-    }
-    return litestore_rollback_tx(ctx);
-}
-
-static
-int get_kv_data(litestore* ctx,
-                const litestore_id_t id,
-                const void* key, const size_t key_len,
-                litestore_get_kv_cb callback, void* user_data)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx->get_kv_data && callback)
-    {
-        if (sqlite3_bind_int64(ctx->get_kv_data, 1, id) != SQLITE_OK)
-        {
-            print_sqlite_error(ctx);
-        }
-        else
-        {
-            int rc = 0;
-            while ((rc = sqlite3_step(ctx->get_kv_data)) != SQLITE_DONE)
-            {
-                if (rc == SQLITE_ROW)
-                {
-                    const void* k =
-                        sqlite3_column_blob(ctx->get_kv_data, 0);
-                    const int k_len =
-                        sqlite3_column_bytes(ctx->get_kv_data, 0);
-                    const void* v =
-                        sqlite3_column_blob(ctx->get_kv_data, 1);
-                    const int v_len =
-                        sqlite3_column_bytes(ctx->get_kv_data, 1);
-                    if ((*callback)(key, key_len,
-                                    k, k_len, v, v_len,
-                                    user_data)
-                        != LITESTORE_OK)
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    print_sqlite_error(ctx);
-                    break;
-                }
-            }  /* while */
-            if (rc == SQLITE_DONE)
-            {
-                rv = LITESTORE_OK;
-            }
-        }
-        sqlite3_reset(ctx->get_kv_data);
-    }
-
-    return rv;
-}
-
-static
-int get_array_data(litestore* ctx,
-                   const litestore_id_t id,
-                   const void* key, const size_t key_len,
-                   litestore_get_array_cb callback, void* user_data)
-{
-    int rv = LITESTORE_ERR;
-
-    if (ctx->get_array_data && callback)
-    {
-        if (sqlite3_bind_int64(ctx->get_array_data, 1, id) != SQLITE_OK)
-        {
-            print_sqlite_error(ctx);
-        }
-        else
-        {
-            int rc = 0;
-            while ((rc = sqlite3_step(ctx->get_array_data)) != SQLITE_DONE)
-            {
-                if (rc == SQLITE_ROW)
-                {
-                    const unsigned index =
-                        (unsigned)sqlite3_column_int64(ctx->get_array_data, 0);
-                    const void* v =
-                        sqlite3_column_blob(ctx->get_array_data, 1);
-                    const int v_len =
-                        sqlite3_column_bytes(ctx->get_array_data, 1);
-                    if ((*callback)(key, key_len, index, v, v_len, user_data)
-                        != LITESTORE_OK)
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    print_sqlite_error(ctx);
-                    break;
-                }
-            }  /* while */
-            if (rc == SQLITE_DONE)
-            {
-                rv = LITESTORE_OK;
-            }
-        }
-        sqlite3_reset(ctx->get_array_data);
-    }
-
-    return rv;
-}
 
 /*-----------------------------------------*/
 /*------------------ API ------------------*/
@@ -1163,8 +1181,8 @@ int litestore_update_raw(litestore* ctx,
         if (rv == LITESTORE_OK)
         {
             rv = update_raw_data(ctx,
-                                    id, old_type,
-                                    value, value_len);
+                                 id, old_type,
+                                 value, value_len);
             if (rv == LITESTORE_OK && old_type != LS_RAW)
             {
                 rv = update_type(ctx, id, LS_RAW);
