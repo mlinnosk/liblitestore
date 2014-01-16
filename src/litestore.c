@@ -469,9 +469,9 @@ int save_kv_data(litestore* ctx, const litestore_id_t new_id,
 /*----------------- GET -------------------*/
 /*-----------------------------------------*/
 static
-int get_key_type(litestore* ctx,
-                 const char* key, const size_t key_len,
-                 litestore_id_t* id, int* type)
+int get_object_type(litestore* ctx,
+                    const char* key, const size_t key_len,
+                    litestore_id_t* id, int* type)
 {
     if (ctx->get_key && key && key_len > 0)
     {
@@ -708,8 +708,8 @@ int delete_array_data(litestore* ctx, const litestore_id_t id)
 /*----------------- UPDATE ----------------*/
 /*-----------------------------------------*/
 static
-int update_type(litestore* ctx,
-                const litestore_id_t id, const int type)
+int update_object_type(litestore* ctx,
+                       const litestore_id_t id, const int type)
 {
     sqlite3_reset(ctx->update_type);
     if (sqlite3_bind_int(ctx->update_type, 1, type) != SQLITE_OK
@@ -1057,7 +1057,7 @@ int litestore_get_null(litestore* ctx,
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_object_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type != LS_NULL)
         {
@@ -1083,13 +1083,13 @@ int litestore_update_null(litestore* ctx,
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_object_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_null(ctx, id, old_type);
             if (rv == LITESTORE_OK && old_type != LS_NULL)
             {
-                rv = update_type(ctx, id, LS_NULL);
+                rv = update_object_type(ctx, id, LS_NULL);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1146,7 +1146,7 @@ int litestore_get_raw(litestore* ctx,
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_object_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_RAW)
         {
@@ -1177,7 +1177,7 @@ int litestore_update_raw(litestore* ctx,
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_object_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_raw_data(ctx,
@@ -1185,7 +1185,7 @@ int litestore_update_raw(litestore* ctx,
                                  value, value_len);
             if (rv == LITESTORE_OK && old_type != LS_RAW)
             {
-                rv = update_type(ctx, id, LS_RAW);
+                rv = update_object_type(ctx, id, LS_RAW);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1242,7 +1242,7 @@ int litestore_get_array(litestore* ctx,
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_object_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_ARRAY)
         {
@@ -1274,13 +1274,13 @@ int litestore_update_array(litestore* ctx,
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_object_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_array_data(ctx, id, old_type, &data);
             if (rv == LITESTORE_OK && old_type != LS_ARRAY)
             {
-                rv = update_type(ctx, id, LS_ARRAY);
+                rv = update_object_type(ctx, id, LS_ARRAY);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
@@ -1338,7 +1338,7 @@ int litestore_get_kv(litestore* ctx,
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &type);
+        rv = get_object_type(ctx, key, key_len, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_KV)
         {
@@ -1370,13 +1370,13 @@ int litestore_update_kv(litestore* ctx,
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = get_key_type(ctx, key, key_len, &id, &old_type);
+        rv = get_object_type(ctx, key, key_len, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_kv_data(ctx, id, old_type, &data);
             if (rv == LITESTORE_OK && old_type != LS_KV)
             {
-                rv = update_type(ctx, id, LS_KV);
+                rv = update_object_type(ctx, id, LS_KV);
             }
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
