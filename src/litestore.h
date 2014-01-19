@@ -10,8 +10,14 @@
 extern "C" {
 #endif
 
+/**
+ * The Litestore handle type.
+ */
 typedef struct litestore litestore;
 
+/**
+ * Return values.
+ */
 enum
 {
     LITESTORE_OK = 0,
