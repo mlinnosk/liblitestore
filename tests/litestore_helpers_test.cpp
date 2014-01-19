@@ -17,11 +17,28 @@ TEST(LitestoreHelpers, make_blob_returns_object)
 TEST(LitestoreHelpers, slice_returns_object)
 {
     const char* orig = "foo_bar";
-    litestore_slice_t slice = litestore_slice(orig, 3);
+    litestore_slice_t slice = litestore_slice(orig, 4, strlen(orig));
 
     EXPECT_EQ(3u, slice.length);
     EXPECT_TRUE(slice.data);
     char* copy = strndup(slice.data, slice.length);
-    EXPECT_STREQ("foo", copy);
+    EXPECT_STREQ("bar", copy);
     free(copy);
+}
+
+TEST(LitestoreHelpers, slice_returns_null_on_invalid_input)
+{
+    const char* orig = "foo";
+    litestore_slice_t slice = litestore_slice(orig, 2, 2);
+    EXPECT_FALSE(slice.data);
+    EXPECT_EQ(0u, slice.length);
+}
+
+TEST(LitestoreHelpers, slice_str_returns_object)
+{
+    const char* orig = "foo_bar";
+    litestore_slice_t slice = litestore_slice_str(orig);
+
+    EXPECT_EQ(strlen(orig), slice.length);
+    EXPECT_EQ(orig, slice.data);
 }

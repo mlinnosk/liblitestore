@@ -109,4 +109,16 @@ struct LitestoreTest : Test
 #define ASSERT_LS_OK(pred) ASSERT_EQ(LITESTORE_OK, pred)
 #define ASSERT_LS_ERR(pred) ASSERT_EQ(LITESTORE_ERR, pred)
 
+inline
+litestore_slice_t slice(const std::string& str)
+{
+    return litestore_slice(str.c_str(), 0, str.length());
+}
+
+inline
+litestore_blob_t blob(const std::string& str)
+{
+    return litestore_make_blob(str.c_str(), str.length());
+}
+
 }  // namespace ns

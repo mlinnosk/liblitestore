@@ -47,10 +47,20 @@ typedef struct
  * Will _NOT_ allocate storeage.
  *
  * @param str The string.
- * @param length The length of the slice.
+ * @param begin Begin index of the slice.
+ * @param end End index of the slice. Excluding null-terminator.
  * @return A slice.
  */
-litestore_slice_t litestore_slice(const char* str, const size_t length);
+litestore_slice_t litestore_slice(const char* str,
+                                  const size_t begin, const size_t end);
+/**
+ * Create a slice from c-string.
+ *
+ * @param str The string to slice.
+ * @return A slice from beginning to strlen(str).
+ */
+litestore_slice_t litestore_slice_str(const char* str);
+
 
 #ifdef __cplusplus
 }  /* extern "C" */

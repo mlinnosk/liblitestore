@@ -554,7 +554,7 @@ int get_raw_data(litestore* ctx,
         const int bytes = sqlite3_column_bytes(ctx->get_raw_data, 0);
         if (bytes > 0)
         {
-            return (*callback)(raw_data, bytes, user_data);
+            return (*callback)(litestore_make_blob(raw_data, bytes), user_data);
         }
     }
     return LITESTORE_ERR;
@@ -589,7 +589,9 @@ int get_array_data(litestore* ctx,
                         sqlite3_column_blob(ctx->get_array_data, 1);
                     const int v_len =
                         sqlite3_column_bytes(ctx->get_array_data, 1);
-                    if ((*callback)(key, key_len, index, v, v_len, user_data)
+                    if ((*callback)(litestore_slice(key, 0, key_len),
+                                    index, litestore_make_blob(v, v_len),
+                                    user_data)
                         != LITESTORE_OK)
                     {
                         break;
@@ -643,8 +645,9 @@ int get_kv_data(litestore* ctx,
                         sqlite3_column_blob(ctx->get_kv_data, 1);
                     const int v_len =
                         sqlite3_column_bytes(ctx->get_kv_data, 1);
-                    if ((*callback)(key, key_len,
-                                    k, k_len, v, v_len,
+                    if ((*callback)(litestore_slice(key, 0, key_len),
+                                    litestore_make_blob(k, k_len),
+                                    litestore_make_blob(v, v_len),
                                     user_data)
                         != LITESTORE_OK)
                     {
@@ -1069,14 +1072,16 @@ int gen_update(litestore* ctx,
     return rv;
 }
 
-
-/*-----------------------------------------*/
-/*------------------ API ------------------*/
-/*-----------------------------------------*/
-
-void* litestore_native_ctx(litestore* ctx)
+static inline
+int slice_valid(const litestore_slice_t s)
 {
-    return ctx->db;
+    return s.data && s.length > 0;
+}
+
+static inline
+int blob_valid(const litestore_blob_t b)
+{
+    return b.data && b.size > 0;
 }
 
 /* from litestore_helpers.h */
@@ -1087,10 +1092,31 @@ litestore_blob_t litestore_make_blob(const void* data, const size_t size)
 }
 
 /* from litestore_helpers.h */
-litestore_slice_t litestore_slice(const char* str, const size_t length)
+litestore_slice_t litestore_slice(const char* str,
+                                  const size_t begin, const size_t end)
 {
-    litestore_slice_t tmp = {str, length};
+    if (str && end > begin)
+    {
+        litestore_slice_t tmp = {str + begin, end - begin};
+        return tmp;
+    }
+    litestore_slice_t tmp = {NULL, 0};
     return tmp;
+}
+
+/* from litestore_helpers.h */
+litestore_slice_t litestore_slice_str(const char* str)
+{
+    return litestore_slice(str, 0, strlen(str));
+}
+
+/*-----------------------------------------*/
+/*------------------ API ------------------*/
+/*-----------------------------------------*/
+
+void* litestore_native_ctx(litestore* ctx)
+{
+    return ctx->db;
 }
 
 /*-----------------------------------------*/
@@ -1165,17 +1191,16 @@ int litestore_rollback_tx(litestore* ctx)
 /*-----------------------------------------*/
 /*---------------- null -------------------*/
 /*-----------------------------------------*/
-int litestore_save_null(litestore* ctx,
-                        const char* key, const size_t key_len)
+int litestore_save_null(litestore* ctx, const litestore_slice_t key)
 {
     int rv = LITESTORE_ERR;
 
-    if (ctx && key && key_len > 0)
+    if (ctx && slice_valid(key))
     {
         int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = save_key(ctx, key, key_len, LS_NULL, &new_id);
+        rv = save_key(ctx, key.data, key.length, LS_NULL, &new_id);
 
         if (own_tx)
         {
@@ -1186,18 +1211,17 @@ int litestore_save_null(litestore* ctx,
     return rv;
 }
 
-int litestore_get_null(litestore* ctx,
-                       const char* key, const size_t key_len)
+int litestore_get_null(litestore* ctx, const litestore_slice_t key)
 {
     int rv = LITESTORE_ERR;
 
-    if (ctx && key && key_len > 0)
+    if (ctx && slice_valid(key))
     {
         int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = get_object_type(ctx, key, key_len, &id, &type);
+        rv = get_object_type(ctx, key.data, key.length, &id, &type);
 
         if (rv == LITESTORE_OK && type != LS_NULL)
         {
@@ -1213,17 +1237,16 @@ int litestore_get_null(litestore* ctx,
     return rv;
 }
 
-int litestore_update_null(litestore* ctx,
-                          const char* key, const size_t key_len)
+int litestore_update_null(litestore* ctx, const litestore_slice_t key)
 {
     int rv = LITESTORE_ERR;
-    if (ctx && key && key_len > 0)
+    if (ctx && slice_valid(key))
     {
         int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = get_object_type(ctx, key, key_len, &id, &old_type);
+        rv = get_object_type(ctx, key.data, key.length, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_null(ctx, id, old_type);
@@ -1234,7 +1257,7 @@ int litestore_update_null(litestore* ctx,
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
         {
-            rv = litestore_save_null(ctx, key, key_len);
+            rv = litestore_save_null(ctx, key);
         }
 
         if (own_tx)
@@ -1249,20 +1272,20 @@ int litestore_update_null(litestore* ctx,
 /*---------------- raw --------------------*/
 /*-----------------------------------------*/
 int litestore_save_raw(litestore* ctx,
-                       const char* key, const size_t key_len,
-                       const void* value, const size_t value_len)
+                       const litestore_slice_t key,
+                       const litestore_blob_t value)
 {
     int rv = LITESTORE_ERR;
 
-    if (ctx && key && key_len > 0 && value && value_len > 0)
+    if (ctx && slice_valid(key) && blob_valid(value))
     {
         int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
-        rv = save_key(ctx, key, key_len, LS_RAW, &new_id);
+        rv = save_key(ctx, key.data, key.length, LS_RAW, &new_id);
         if (rv == LITESTORE_OK)
         {
-            rv = save_raw_data(ctx, new_id, value, value_len);
+            rv = save_raw_data(ctx, new_id, value.data, value.size);
         }
 
         if (own_tx)
@@ -1274,19 +1297,18 @@ int litestore_save_raw(litestore* ctx,
     return rv;
 }
 
-int litestore_get_raw(litestore* ctx,
-                      const char* key, const size_t key_len,
+int litestore_get_raw(litestore* ctx, const litestore_slice_t key,
                       litestore_get_raw_cb callback, void* user_data)
 {
     int rv = LITESTORE_ERR;
 
-    if (ctx && key && key_len > 0)
+    if (ctx && slice_valid(key))
     {
         int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
-        rv = get_object_type(ctx, key, key_len, &id, &type);
+        rv = get_object_type(ctx, key.data, key.length, &id, &type);
 
         if (rv == LITESTORE_OK && type == LS_RAW)
         {
@@ -1307,22 +1329,22 @@ int litestore_get_raw(litestore* ctx,
 }
 
 int litestore_update_raw(litestore* ctx,
-                         const char* key, const size_t key_len,
-                         const void* value, const size_t value_len)
+                         const litestore_slice_t key,
+                         const litestore_blob_t value)
 {
     int rv = LITESTORE_ERR;
-    if (ctx && key && key_len > 0)
+    if (ctx && slice_valid(key))
     {
         int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
-        rv = get_object_type(ctx, key, key_len, &id, &old_type);
+        rv = get_object_type(ctx, key.data, key.length, &id, &old_type);
         if (rv == LITESTORE_OK)
         {
             rv = update_raw_data(ctx,
                                  id, old_type,
-                                 value, value_len);
+                                 value.data, value.size);
             if (rv == LITESTORE_OK && old_type != LS_RAW)
             {
                 rv = update_object_type(ctx, id, LS_RAW);
@@ -1330,7 +1352,7 @@ int litestore_update_raw(litestore* ctx,
         }
         else if (rv == LITESTORE_UNKNOWN_ENTITY)
         {
-            rv = litestore_save_raw(ctx, key, key_len, value, value_len);
+            rv = litestore_save_raw(ctx, key, value);
         }
 
         if (own_tx)
@@ -1344,73 +1366,66 @@ int litestore_update_raw(litestore* ctx,
 /*-----------------------------------------*/
 /*---------------- array ------------------*/
 /*-----------------------------------------*/
-int litestore_save_array(litestore* ctx,
-                         const char* key, const size_t key_len,
+int litestore_save_array(litestore* ctx, const litestore_slice_t key,
                          litestore_array_iterator data)
 {
     save_ctx op = {LS_ARRAY, &save_array_data, &data};
-    return gen_save(ctx, key, key_len, op);
+    return gen_save(ctx, key.data, key.length, op);
 }
 
-int litestore_get_array(litestore* ctx,
-                        const char* key, const size_t key_len,
+int litestore_get_array(litestore* ctx, const litestore_slice_t key,
                         litestore_get_array_cb callback, void* user_data)
 {
     get_ctx op = {LS_ARRAY, &get_array_data, callback, user_data};
-    return gen_get(ctx, key, key_len, op);
+    return gen_get(ctx, key.data, key.length, op);
 }
 
-int litestore_update_array(litestore* ctx,
-                           const char* key, const size_t key_len,
+int litestore_update_array(litestore* ctx, const litestore_slice_t key,
                            litestore_array_iterator data)
 {
     update_ctx op = {LS_ARRAY, &update_array_data, &save_array_data, &data};
-    return gen_update(ctx, key, key_len, op);
+    return gen_update(ctx, key.data, key.length, op);
 }
 
 /*-----------------------------------------*/
 /*---------------- kv ---------------------*/
 /*-----------------------------------------*/
-int litestore_save_kv(litestore* ctx,
-                      const char* key, const size_t key_len,
+int litestore_save_kv(litestore* ctx, const litestore_slice_t key,
                       litestore_kv_iterator data)
 {
     save_ctx op = {LS_KV, &save_kv_data, &data};
-    return gen_save(ctx, key, key_len, op);
+    return gen_save(ctx, key.data, key.length, op);
 }
 
-int litestore_get_kv(litestore* ctx,
-                     const char* key, const size_t key_len,
+int litestore_get_kv(litestore* ctx, const litestore_slice_t key,
                      litestore_get_kv_cb callback, void* user_data)
 {
     get_ctx op = {LS_KV, &get_kv_data, callback, user_data};
-    return gen_get(ctx, key, key_len, op);
+    return gen_get(ctx, key.data, key.length, op);
 }
 
-int litestore_update_kv(litestore* ctx,
-                        const char* key, const size_t key_len,
+int litestore_update_kv(litestore* ctx, const litestore_slice_t key,
                         litestore_kv_iterator data)
 {
     update_ctx op = {LS_KV, &update_kv_data, &save_kv_data, &data};
-    return gen_update(ctx, key, key_len, op);
+    return gen_update(ctx, key.data, key.length, op);
 }
 
 /*-----------------------------------------*/
 /*---------------- delete -----------------*/
 /*-----------------------------------------*/
-int litestore_delete(litestore* ctx,
-                     const char* key, const size_t key_len)
+int litestore_delete(litestore* ctx, const litestore_slice_t key)
 {
     int rv = LITESTORE_ERR;
 
     /* delete should cascade */
-    if (ctx && key && key_len > 0 && ctx->delete_key)
+    if (ctx && slice_valid(key) && ctx->delete_key)
     {
         int own_tx = opt_begin_tx(ctx);
 
         sqlite3_reset(ctx->delete_key);
         if (sqlite3_bind_text(ctx->delete_key,
-                              1, key, key_len,
+                              1, key.data, key.length,
                               SQLITE_STATIC) == SQLITE_OK)
         {
             if (sqlite3_step(ctx->delete_key) == SQLITE_DONE)
