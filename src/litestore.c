@@ -1079,6 +1079,20 @@ void* litestore_native_ctx(litestore* ctx)
     return ctx->db;
 }
 
+/* from litestore_helpers.h */
+litestore_blob_t litestore_make_blob(const void* data, const size_t size)
+{
+    litestore_blob_t tmp = {data, size};
+    return tmp;
+}
+
+/* from litestore_helpers.h */
+litestore_slice_t litestore_slice(const char* str, const size_t length)
+{
+    litestore_slice_t tmp = {str, length};
+    return tmp;
+}
+
 /*-----------------------------------------*/
 /*---------------- construction -----------*/
 /*-----------------------------------------*/

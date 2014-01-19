@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "litestore_iterator.h"
+#include "litestore_helpers.h"
 
 
 #ifdef __cplusplus
