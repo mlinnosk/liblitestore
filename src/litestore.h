@@ -31,13 +31,55 @@ enum
  */
 void* litestore_native_ctx(litestore* ctx);
 
+/**
+ * Open a connection to the store in db_file_name.
+ *
+ * If the store does not exist, it will be created.
+ * Multipple connection can be open at the same time.
+ * @see For threading: http://www.sqlite.org/threadsafe.html
+ *
+ * @param db_file_name A null terminated UTF-8 encoded c-string,
+ *                     pointing to the actual database.
+ * @param ctx A pointer to a Litestore context structure that will allocated.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
 int litestore_open(const char* db_file_name, litestore** ctx);
+/**
+ * Close the connection to the store.
+ *
+ * @param ctx The context allocated by litestore_open.
+ */
 void litestore_close(litestore* ctx);
-
+/**
+ * Begin transaction.
+ *
+ * Multipple API calls can be wrapped inside a single transaction using
+ * this function. Transaction must be ended using 'commit_tx' oR 'rollback_tx'.
+ *
+ * Without using explicit transactions, each API call will run in it's own
+ * transaction.
+ *
+ * @ctx The context allocated by litestore_open.
+ */
 int litestore_begin_tx(litestore* ctx);
+/**
+ * Commit transaction.
+ *
+ * All the changes will take permanent effect (stored) after this call.
+ *
+ * @ctx The context allocated by litestore_open.
+ */
 int litestore_commit_tx(litestore* ctx);
+/**
+ * Rollback transaction.
+ *
+ * Can be called instead of 'commit_tx' to rollback all actions done since
+ * the call to 'begin_tx'.
+ *
+ * @ctx The context allocated by litestore_open.
+ */
 int litestore_rollback_tx(litestore* ctx);
-
 /**
  * Save 'null' value int the store.
  * Inserts the given key in the store.
