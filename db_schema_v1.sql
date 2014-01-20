@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2014 Markku Linnoskivi
+ *
+ * See the file LICENSE.txt for copying permission.
+ */
 CREATE TABLE IF NOT EXISTS meta(
        schema_version INTEGER NOT NULL DEFAULT 1
 );

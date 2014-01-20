@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2014 Markku Linnoskivi
+ *
+ * See the file LICENSE.txt for copying permission.
+ */
 #include <gtest/gtest.h>
 
 #include <cstring>

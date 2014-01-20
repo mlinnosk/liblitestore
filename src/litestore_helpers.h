@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2014 Markku Linnoskivi
+ *
+ * See the file LICENSE.txt for copying permission.
+ */
 #ifndef LITESTORE_HELPERS_H
 #define LITESTORE_HELPERS_H
 

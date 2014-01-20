@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2014 Markku Linnoskivi
+ *
+ * See the file LICENSE.txt for copying permission.
+ */
 #include "litestore_data_parser.h"
 
 #include <ctype.h>
