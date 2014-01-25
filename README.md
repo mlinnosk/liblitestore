@@ -38,11 +38,14 @@ make && sudo make install
 ### Dependencies
 The library:
 * C99 compiler (*compile*)
-** Should be adaptable to older standard.
-** Tested with gcc (4.7.3 64bit, Linux)
+
+    Should be adaptable to older standard.
+    
+   Tested with gcc (4.7.3 64bit, Linux)
 * Make or your own build system (*compile*)
 * SQLite3 library (*compile*, *runtime*)
-** http://www.sqlite.org/
+    
+   http://www.sqlite.org/
 
 For tests:
 * C++ compiler
@@ -201,6 +204,8 @@ Donate
 ------
 
 ### PayPal
+
+<div>
 <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
 <input type="hidden" name="cmd" value="_s-xclick">
 <input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----
@@ -208,6 +213,7 @@ Donate
 <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
 <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
 </form>
+</div>
 
 ### Bitcoin
 17LEp96XCiTQwTrFWnaQ7jzJC1YjK5pJci
