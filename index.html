@@ -1,0 +1,305 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Litestore by mlinnosk</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/mlinnosk/liblitestore">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/mlinnosk/liblitestore/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/mlinnosk/liblitestore/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Litestore</h1>
+          <p>Litestore library, a key-value store based on SQLite.</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/mlinnosk">mlinnosk</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>
+<a name="litestore-library" class="anchor" href="#litestore-library"><span class="octicon octicon-link"></span></a>Litestore library</h1>
+
+<h2>
+<a name="about" class="anchor" href="#about"><span class="octicon octicon-link"></span></a>About</h2>
+
+<h3>
+<a name="what-it-is-and-isnt" class="anchor" href="#what-it-is-and-isnt"><span class="octicon octicon-link"></span></a>What it is and isn't?</h3>
+
+<p>Litestore library is a lightweight, embeddable, zero config, key-value style
+storage system build on SQLite3 database (<a href="http://www.sqlite.org/">http://www.sqlite.org/</a>).</p>
+
+<p>It's not a full document database or key-value store server system.
+LIttle like comparing SQLite to Mysql or PotgreSQL (actually SQLite compares
+better than Litestore to Couch...).</p>
+
+<p>Litestore is quite low level. It can be used as is but is intended to be built
+upon. More about the design in section 'Implementation details'.</p>
+
+<h3>
+<a name="why-should-i-use-it" class="anchor" href="#why-should-i-use-it"><span class="octicon octicon-link"></span></a>Why should I use it?</h3>
+
+<ul>
+<li>If you just want things to work and don't really care about SQL or playing
+with files.</li>
+<li>You want to save multiple values in a consistent transactional
+way that regular files just can't do.</li>
+<li>Full blown document databases like, CouchDB, MongoDB or Redis are just too
+huge and have too much dependencies.</li>
+</ul><h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>MIT
+See LICENSE.txt</p>
+
+<p>SQLite is released in the public domain,
+see: <a href="http://www.sqlite.org/copyright.html">http://www.sqlite.org/copyright.html</a>
+This library does not modify SQLite, only links against it.</p>
+
+<h2>
+<a name="building" class="anchor" href="#building"><span class="octicon octicon-link"></span></a>Building</h2>
+
+<p>make &amp;&amp; sudo make install</p>
+
+<h3>
+<a name="dependencies" class="anchor" href="#dependencies"><span class="octicon octicon-link"></span></a>Dependencies</h3>
+
+<p>The library:</p>
+
+<ul>
+<li>
+<p>C99 compiler (<em>compile</em>)</p>
+
+<p>Should be adaptable to older standard.</p>
+
+<p>Tested with gcc (4.7.3 64bit, Linux)</p>
+</li>
+<li>Make or your own build system (<em>compile</em>)</li>
+<li>
+<p>SQLite3 library (<em>compile</em>, <em>runtime</em>)</p>
+
+<p><a href="http://www.sqlite.org/">http://www.sqlite.org/</a></p>
+</li>
+</ul><p>For tests:</p>
+
+<ul>
+<li>C++ compiler</li>
+<li>gtest</li>
+</ul><h2>
+<a name="versioning" class="anchor" href="#versioning"><span class="octicon octicon-link"></span></a>Versioning</h2>
+
+<p>Semantic versioning 2.0: <a href="http://semver.org/spec/v2.0.0.html">http://semver.org/spec/v2.0.0.html</a>
+See file VERSION, for current version.</p>
+
+<h2>
+<a name="usage-example" class="anchor" href="#usage-example"><span class="octicon octicon-link"></span></a>Usage example</h2>
+
+<div class="highlight highlight-c"><pre><span class="cp">#include &lt;string.h&gt;</span>
+<span class="cp">#include &lt;litestore/litestore.h&gt;</span>
+
+<span class="cm">/* Callback for raw data, that allocates a new string */</span>
+<span class="kt">int</span> <span class="nf">alloc_str</span><span class="p">(</span><span class="kt">litestore_blob_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">char</span><span class="o">**</span> <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
+    <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="n">strndup</span><span class="p">((</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">value</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">value</span><span class="p">.</span><span class="n">size</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">**</span> <span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Must provide DB file name!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Open the connection */</span>
+    <span class="n">litestore</span><span class="o">*</span> <span class="n">ls</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">litestore_open</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">ls</span><span class="p">)</span> <span class="o">!=</span> <span class="n">LITESTORE_OK</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">litestore_close</span><span class="p">(</span><span class="n">ls</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Save raw data */</span>
+    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">key</span> <span class="o">=</span> <span class="s">"Hello"</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">value</span> <span class="o">=</span> <span class="s">"World!"</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">litestore_save_raw</span><span class="p">(</span><span class="n">ls</span><span class="p">,</span>
+                           <span class="n">litestore_slice_str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                           <span class="n">litestore_make_blob</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+        <span class="o">!=</span> <span class="n">LITESTORE_OK</span><span class="p">))</span>
+    <span class="p">{</span>
+        <span class="n">litestore_close</span><span class="p">(</span><span class="n">ls</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Read the saved data, note callback usage */</span>
+    <span class="kt">char</span><span class="o">*</span> <span class="n">res</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">litestore_get_raw</span><span class="p">(</span><span class="n">ls</span><span class="p">,</span>
+                          <span class="n">litestore_slice_str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                          <span class="o">&amp;</span><span class="n">alloc_str</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span>
+        <span class="o">==</span> <span class="n">LITESTORE_OK</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"%s %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">res</span><span class="p">);</span>
+        <span class="n">free</span><span class="p">(</span><span class="n">res</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="cm">/* Clean up, close the connection */</span>
+    <span class="n">litestore_close</span><span class="p">(</span><span class="n">ls</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+
+<h2>
+<a name="basics" class="anchor" href="#basics"><span class="octicon octicon-link"></span></a>Basics</h2>
+
+<p>Litestore can save <strong>objects</strong>. Each <strong>object</strong> has a <strong>key</strong> and a <strong>value</strong>.
+The value can have different types. The key is a user defined <strong>UTF-8 encoded</strong>
+string. It can have arbitrary length, though this naturally affects performance
+since objects are accessed based on the key.</p>
+
+<h3>
+<a name="object-values" class="anchor" href="#object-values"><span class="octicon octicon-link"></span></a>Object values</h3>
+
+<h4>
+<a name="value-types" class="anchor" href="#value-types"><span class="octicon octicon-link"></span></a>Value types</h4>
+
+<p>Litestore can save four (4) different types of objects. These are:</p>
+
+<ul>
+<li>null</li>
+<li>raw</li>
+<li>array</li>
+<li>key-value</li>
+</ul><h5>
+<a name="null" class="anchor" href="#null"><span class="octicon octicon-link"></span></a>Null</h5>
+
+<p>Simplest is the <strong>null</strong> type. Basically it can be used as <strong>boolean</strong> type
+that either exists or it doesn't. It has no real value and only the key is
+stored.</p>
+
+<h5>
+<a name="raw" class="anchor" href="#raw"><span class="octicon octicon-link"></span></a>Raw</h5>
+
+<p>The <strong>raw</strong> type is just a binary <strong>blob</strong> and is saved as is.
+It can be used for any user defined type that can be saved as bytes,
+either directly or by serializing. Format is totally user dependent.</p>
+
+<h5>
+<a name="array" class="anchor" href="#array"><span class="octicon octicon-link"></span></a>Array</h5>
+
+<p><strong>Arrays</strong> are actually <strong>arrays of blobs</strong>. They retain the order of objects.
+I.E. when an array is read, the objects will be in the same order as they
+apeared in the original array that was saved.</p>
+
+<p>The array indexes, objects, are blobs and hence have the same propertied as
+raw data.</p>
+
+<h5>
+<a name="key-value" class="anchor" href="#key-value"><span class="octicon octicon-link"></span></a>Key-value</h5>
+
+<p><strong>Key-value</strong> object is basically a heterogenus <strong>blob-blob map</strong>, where both
+the map-key and the map-value are user defined data. One thing to note is that
+the map-key is a blob and equality is compared as byte data
+(SQLite <a href="http://www.sqlite.org/datatype3.html">implementation</a>).</p>
+
+<h2>
+<a name="implementation-details" class="anchor" href="#implementation-details"><span class="octicon octicon-link"></span></a>Implementation details</h2>
+
+<p>TODO</p>
+
+<h3>
+<a name="design-goals" class="anchor" href="#design-goals"><span class="octicon octicon-link"></span></a>Design goals</h3>
+
+<h4>
+<a name="consistency" class="anchor" href="#consistency"><span class="octicon octicon-link"></span></a>Consistency</h4>
+
+<p>The API aims to be concise. All functions return values indicate the success 
+status of the function and possible output parameters are given as the right 
+most function parameters. All API functions and types are prefixed with 
+<strong>litestore_</strong>. The implementation is not leaked to the user.</p>
+
+<h4>
+<a name="minimum-memory-allocations" class="anchor" href="#minimum-memory-allocations"><span class="octicon octicon-link"></span></a>Minimum memory allocations</h4>
+
+<p>The only memory Litestore library itself allocates, is during open, for the
+<strong>litestore</strong> context object. The underlying implementation (<em>SQLite3</em>) does 
+allocations on it's own and these can't be avoided. How ever all the data is 
+passed as directly as possible and possible allocations are left for the 
+user. This enables the usage of custom allocators.</p>
+
+<p>This is also the reasoning behind the callback style API, that admittedly is
+more cumbersome to use.</p>
+
+<p>On some systems the length of a string is know after constuction 
+(C++ for instance). This is the reason for using the <strong>slice_t</strong> type for
+strings. SQLite needs to know the length of the string (or blob) and if it is 
+more efficient if explicit <strong>strlen()</strong> calls can be avoided.</p>
+
+<h3>
+<a name="transactions" class="anchor" href="#transactions"><span class="octicon octicon-link"></span></a>Transactions</h3>
+
+<p>Litestore can be used with <strong>explicit</strong> transactions or <strong>implicit</strong> 
+transactions. Explicit transactions mean that the user calls the <strong>_tx</strong> 
+functions explicitely and creates an explicit transaction scope.</p>
+
+<p>If no explicit transaction is created, one will be created on each API call.
+And commited if the call succeeds.</p>
+
+<p>For better <strong>performance</strong>, always use <strong>explicit</strong> transactions to group
+API calls.</p>
+
+<h3>
+<a name="thread-safety" class="anchor" href="#thread-safety"><span class="octicon octicon-link"></span></a>Thread safety</h3>
+
+<p>The API is <strong>not</strong> thread safe. I.E. using the same connection/context in 
+multiple threads is not safe. How ever all the state is stored in the context 
+so it should be safe to create multiple connections, one for each thread, 
+to the same DB. 
+SQLite it self is thread safe, if configured properly.
+See: <a href="http://www.sqlite.org/threadsafe.html">http://www.sqlite.org/threadsafe.html</a></p>
+
+<h2>
+<a name="donate" class="anchor" href="#donate"><span class="octicon octicon-link"></span></a>Donate</h2>
+
+<h3>
+<a name="paypal" class="anchor" href="#paypal"><span class="octicon octicon-link"></span></a>PayPal</h3>
+
+<div>
+
+<img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+</div>
+
+<h3>
+<a name="bitcoin" class="anchor" href="#bitcoin"><span class="octicon octicon-link"></span></a>Bitcoin</h3>
+
+<p>17LEp96XCiTQwTrFWnaQ7jzJC1YjK5pJci</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
