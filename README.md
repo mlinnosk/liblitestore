@@ -7,12 +7,12 @@ About
 Litestore library is a lightweight, embeddable, zero config, key-value style
 storage system build on SQLite3 database (http://www.sqlite.org/).
 
+Litestore is quite low level. It can be used as is but is intended to be built
+upon. More about the design in section 'Implementation details'.
+
 It's not a full document database or key-value store server system.
 LIttle like comparing SQLite to Mysql or PotgreSQL (actually SQLite compares
 better than Litestore to Couch...).
-
-Litestore is quite low level. It can be used as is but is intended to be built
-upon. More about the design in section 'Implementation details'.
 
 ### Why should I use it?
 * If you just want things to work and don't really care about SQL or playing
@@ -204,7 +204,7 @@ Donate
 ------
 
 ### PayPal
-
+**markku.linnoskivi@gmail.com**
 <div>
 <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
 <input type="hidden" name="cmd" value="_s-xclick">
