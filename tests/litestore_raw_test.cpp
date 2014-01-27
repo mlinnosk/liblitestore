@@ -160,6 +160,7 @@ TEST_F(LitestoreRawTx, save_null_fails_for_dupliates)
 {
     EXPECT_LS_OK(litestore_save_null(ctx, slice(key)));
     EXPECT_LS_ERR(litestore_save_null(ctx, slice(key)));
+    EXPECT_EQ(1u, errors.size());
 }
 
 TEST_F(LitestoreRawTx, save_raw_saves)

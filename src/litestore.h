@@ -37,19 +37,39 @@ enum
 void* litestore_native_ctx(litestore* ctx);
 
 /**
+ * Callback for errors.
+ *
+ * @param error The error code.
+ * @param desc Information about the error.
+ * @param user_data
+ */
+typedef void (*litestore_error)(const int error, const char* desc,
+                                void* user_data);
+/**
+ * Structure used to pass data to open.
+ */
+typedef struct
+{
+    litestore_error error_callback; /* called on internal (sql) errors */
+    void* err_user_data;  /* passed to error_callback */
+} litestore_opts;
+/**
  * Open a connection to the store in db_file_name.
  *
  * If the store does not exist, it will be created.
  * Multipple connection can be open at the same time.
  * @see For threading: http://www.sqlite.org/threadsafe.html
  *
- * @param db_file_name A null terminated UTF-8 encoded c-string,
- *                     pointing to the actual database.
+ * @param file_name A null terminated UTF-8 encoded c-string,
+ *                  pointing to the actual database.
+ * @param opts Option structure.
  * @param ctx A pointer to a Litestore context structure that will allocated.
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_open(const char* db_file_name, litestore** ctx);
+int litestore_open(const char* file_name,
+                   litestore_opts opts,
+                   litestore** ctx);
 /**
  * Close the connection to the store.
  *

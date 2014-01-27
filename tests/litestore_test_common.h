@@ -47,14 +47,18 @@ struct ObjNameIs
     std::string name;
 };
 
+inline
+void errorCB(const int error, const char* errStr, void* user_data);
 
 struct LitestoreTest : Test
 {
     LitestoreTest()
         : ctx(NULL),
-          db(NULL)
+          db(NULL),
+          errors(0)
     {
-        if (litestore_open(":memory:", &ctx) != LITESTORE_OK)
+        litestore_opts opts = {&errorCB, this};
+        if (litestore_open(":memory:", opts, &ctx) != LITESTORE_OK)
         {
             throw std::runtime_error("Faild to open DB!");
         }
@@ -65,7 +69,10 @@ struct LitestoreTest : Test
         dropDB();
         litestore_close(ctx);
     }
-
+    void lsError(const std::string& errStr)
+    {
+        errors.push_back(errStr);
+    }
     void dropDB()
     {
         sqlite3_exec(db, "DELETE FROM objects;", NULL, NULL, NULL);
@@ -106,7 +113,15 @@ struct LitestoreTest : Test
 
     litestore* ctx;
     sqlite3* db;
+    std::vector<std::string> errors;
 };
+
+inline
+void errorCB(const int error, const char* errStr, void* user_data)
+{
+    LitestoreTest* t = static_cast<LitestoreTest*>(user_data);
+    t->lsError(errStr);
+}
 
 
 #define EXPECT_LS_OK(pred) EXPECT_EQ(LITESTORE_OK, pred)

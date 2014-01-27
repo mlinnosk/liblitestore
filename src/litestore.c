@@ -56,6 +56,7 @@ extern "C"
  */
 struct litestore
 {
+litestore_opts opts;
 sqlite3* db;
 /* tx */
 sqlite3_stmt* begin_tx;
@@ -101,9 +102,18 @@ typedef sqlite3_int64 litestore_id_t;
 /*----------------- HELPERS ---------------*/
 /*-----------------------------------------*/
 static
-void print_sqlite_error(litestore* ctx)
+void sqlite_error(litestore* ctx)
 {
-    printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
+    if (ctx->opts.error_callback)
+    {
+        (*ctx->opts.error_callback)(sqlite3_errcode(ctx->db),
+                                    sqlite3_errmsg(ctx->db),
+                                    ctx->opts.err_user_data);
+    }
+    else
+    {
+        printf("ERROR: %s\n", sqlite3_errmsg(ctx->db));
+    }
 }
 
 static
@@ -119,7 +129,7 @@ int run_stmt(litestore* ctx, sqlite3_stmt* stmt)
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
     }
     sqlite3_reset(stmt);
@@ -254,7 +264,7 @@ int prepare_statements(litestore* ctx)
                         "DELETE FROM kv_data WHERE id = ?;",
                         &(ctx->delete_kv_data)) != LITESTORE_OK)
     {
-        print_sqlite_error(ctx);
+        sqlite_error(ctx);
         return LITESTORE_ERR;
     }
 
@@ -318,12 +328,12 @@ int save_key(litestore* ctx,
             || sqlite3_bind_int(ctx->save_key,
                                 2, data_type) != SQLITE_OK)
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (sqlite3_step(ctx->save_key) != SQLITE_DONE)
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (id)
@@ -353,7 +363,7 @@ int save_raw_data(litestore* ctx, litestore_id_t new_id, void* value)
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->save_raw_data);
     }
@@ -379,7 +389,7 @@ int save_array(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->save_array_data);
     }
@@ -432,7 +442,7 @@ int save_kv(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->save_kv_data);
     }
@@ -516,7 +526,7 @@ int get_object_type(litestore* ctx,
                               1, key, key_len,
                               SQLITE_STATIC) != SQLITE_OK)
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         /* expect only one aswer */
@@ -561,7 +571,7 @@ int get_raw_data(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->get_raw_data);
     }
@@ -583,7 +593,7 @@ int get_array_data(litestore* ctx,
 
         if (sqlite3_bind_int64(ctx->get_array_data, 1, id) != SQLITE_OK)
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         else
         {
@@ -608,7 +618,7 @@ int get_array_data(litestore* ctx,
                 }
                 else
                 {
-                    print_sqlite_error(ctx);
+                    sqlite_error(ctx);
                     break;
                 }
             }  /* while */
@@ -637,7 +647,7 @@ int get_kv_data(litestore* ctx,
 
         if (sqlite3_bind_int64(ctx->get_kv_data, 1, id) != SQLITE_OK)
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         else
         {
@@ -665,7 +675,7 @@ int get_kv_data(litestore* ctx,
                 }
                 else
                 {
-                    print_sqlite_error(ctx);
+                    sqlite_error(ctx);
                     break;
                 }
             }  /* while */
@@ -735,12 +745,12 @@ int delete_raw_data(litestore*ctx, const litestore_id_t id)
         sqlite3_reset(ctx->delete_raw_data);
         if ((sqlite3_bind_int64(ctx->delete_raw_data, 1, id) != SQLITE_OK))
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             return LITESTORE_ERR;
         }
         if (sqlite3_step(ctx->delete_raw_data) != SQLITE_DONE)
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             return LITESTORE_ERR;
         }
     }
@@ -765,7 +775,7 @@ int delete_kv_data(litestore* ctx, const litestore_id_t id)
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->delete_kv_data);
     }
@@ -787,7 +797,7 @@ int delete_array_data(litestore* ctx, const litestore_id_t id)
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->delete_array_data);
     }
@@ -807,12 +817,12 @@ int update_object_type(litestore* ctx,
     if (sqlite3_bind_int(ctx->update_type, 1, type) != SQLITE_OK
         || sqlite3_bind_int64(ctx->update_type, 2, id) != SQLITE_OK)
     {
-        print_sqlite_error(ctx);
+        sqlite_error(ctx);
         return LITESTORE_ERR;
     }
     if (sqlite3_step(ctx->update_type) != SQLITE_DONE)
     {
-        print_sqlite_error(ctx);
+        sqlite_error(ctx);
         return LITESTORE_ERR;
     }
 
@@ -875,13 +885,13 @@ int update_raw_data(litestore* ctx,
             }
             else
             {
-                print_sqlite_error(ctx);
+                sqlite_error(ctx);
                 rv = LITESTORE_ERR;
             }
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             rv = LITESTORE_ERR;
         }
         sqlite3_reset(ctx->update_raw_data);
@@ -913,7 +923,7 @@ int update_array(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->update_array_data);
     }
@@ -986,7 +996,7 @@ int update_kv(litestore* ctx, const litestore_id_t id,
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
         }
         sqlite3_reset(ctx->update_kv_data);
     }
@@ -1133,14 +1143,16 @@ void* litestore_native_ctx(litestore* ctx)
 /*-----------------------------------------*/
 /*---------------- construction -----------*/
 /*-----------------------------------------*/
-int litestore_open(const char* db_file_name, litestore** ctx)
+int litestore_open(const char* file_name,
+                   litestore_opts opts,
+                   litestore** ctx)
 {
     *ctx = (litestore*)malloc(sizeof(litestore));
     if (*ctx)
     {
         memset(*ctx, 0, sizeof(litestore));
-
-        if (sqlite3_open(db_file_name, &(*ctx)->db) != SQLITE_OK
+        (*ctx)->opts = opts;
+        if (sqlite3_open(file_name, &(*ctx)->db) != SQLITE_OK
             || init_db(*ctx) != LITESTORE_OK)
         {
             litestore_close(*ctx);
@@ -1377,13 +1389,13 @@ int litestore_delete(litestore* ctx, litestore_slice_t key)
             }
             else
             {
-                print_sqlite_error(ctx);
+                sqlite_error(ctx);
                 rv = LITESTORE_ERR;
             }
         }
         else
         {
-            print_sqlite_error(ctx);
+            sqlite_error(ctx);
             rv = LITESTORE_ERR;
         }
 
