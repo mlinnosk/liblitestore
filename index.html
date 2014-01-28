@@ -115,30 +115,47 @@ See file VERSION, for current version.</p>
 <h2>
 <a name="usage-example" class="anchor" href="#usage-example"><span class="octicon octicon-link"></span></a>Usage example</h2>
 
-<div class="highlight highlight-c"><pre><span class="cp">#include &lt;string.h&gt;</span>
-<span class="cp">#include &lt;litestore/litestore.h&gt;</span>
+<div class="highlight highlight-c"><pre><span class="cp">#include &lt;stdio.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;string.h&gt;</span>
 
-<span class="cm">/* Callback for raw data, that allocates a new string */</span>
+<span class="cp">#include "litestore.h"</span>
+
+<span class="cm">/* Callback for raw data, that allocates a new string. */</span>
+<span class="k">static</span>
 <span class="kt">int</span> <span class="nf">alloc_str</span><span class="p">(</span><span class="kt">litestore_blob_t</span> <span class="n">value</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">user_data</span><span class="p">)</span>
 <span class="p">{</span>
     <span class="kt">char</span><span class="o">**</span> <span class="n">res</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span><span class="o">**</span><span class="p">)</span><span class="n">user_data</span><span class="p">;</span>
-    <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="n">strndup</span><span class="p">((</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">value</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">value</span><span class="p">.</span><span class="n">size</span><span class="p">)</span>
+    <span class="o">*</span><span class="n">res</span> <span class="o">=</span> <span class="n">strndup</span><span class="p">((</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span><span class="p">)</span><span class="n">value</span><span class="p">.</span><span class="n">data</span><span class="p">,</span> <span class="n">value</span><span class="p">.</span><span class="n">size</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">LITESTORE_OK</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="cm">/* Callback for internal errors. */</span>
+<span class="k">static</span>
+<span class="kt">void</span> <span class="nf">err</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span> <span class="n">error_code</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">error_str</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">user_data</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"ERR: (%d): %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">error_code</span><span class="p">,</span> <span class="n">error_str</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">**</span> <span class="n">argv</span><span class="p">)</span>
 <span class="p">{</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span>
     <span class="p">{</span>
         <span class="n">printf</span><span class="p">(</span><span class="s">"Must provide DB file name!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
         <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
     <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"Opening DB to '%s'.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+    <span class="p">}</span>
 
     <span class="cm">/* Open the connection */</span>
     <span class="n">litestore</span><span class="o">*</span> <span class="n">ls</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">litestore_open</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="o">&amp;</span><span class="n">ls</span><span class="p">)</span> <span class="o">!=</span> <span class="n">LITESTORE_OK</span><span class="p">)</span>
+    <span class="n">litestore_opts</span> <span class="n">opts</span> <span class="o">=</span> <span class="p">{</span><span class="o">&amp;</span><span class="n">err</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">};</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">litestore_open</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">opts</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ls</span><span class="p">)</span> <span class="o">!=</span> <span class="n">LITESTORE_OK</span><span class="p">)</span>
     <span class="p">{</span>
         <span class="n">litestore_close</span><span class="p">(</span><span class="n">ls</span><span class="p">);</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR 1!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
         <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
     <span class="p">}</span>
 
@@ -147,11 +164,11 @@ See file VERSION, for current version.</p>
     <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">value</span> <span class="o">=</span> <span class="s">"World!"</span><span class="p">;</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">litestore_save_raw</span><span class="p">(</span><span class="n">ls</span><span class="p">,</span>
                            <span class="n">litestore_slice_str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-                           <span class="n">litestore_make_blob</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
-        <span class="o">!=</span> <span class="n">LITESTORE_OK</span><span class="p">))</span>
+                           <span class="n">litestore_make_blob</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+        <span class="o">!=</span> <span class="n">LITESTORE_OK</span><span class="p">)</span>
     <span class="p">{</span>
         <span class="n">litestore_close</span><span class="p">(</span><span class="n">ls</span><span class="p">);</span>
-        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR 2!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
         <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
     <span class="p">}</span>
 
@@ -164,6 +181,10 @@ See file VERSION, for current version.</p>
     <span class="p">{</span>
         <span class="n">printf</span><span class="p">(</span><span class="s">"%s %s</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">res</span><span class="p">);</span>
         <span class="n">free</span><span class="p">(</span><span class="n">res</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span>
+    <span class="p">{</span>
+        <span class="n">printf</span><span class="p">(</span><span class="s">"ERROR 3!</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
     <span class="p">}</span>
 
     <span class="cm">/* Clean up, close the connection */</span>
@@ -228,8 +249,6 @@ the map-key is a blob and equality is compared as byte data
 <h2>
 <a name="implementation-details" class="anchor" href="#implementation-details"><span class="octicon octicon-link"></span></a>Implementation details</h2>
 
-<p>TODO</p>
-
 <h3>
 <a name="design-goals" class="anchor" href="#design-goals"><span class="octicon octicon-link"></span></a>Design goals</h3>
 
@@ -255,7 +274,7 @@ more cumbersome to use.</p>
 
 <p>On some systems the length of a string is know after constuction 
 (C++ for instance). This is the reason for using the <strong>slice_t</strong> type for
-strings. SQLite needs to know the length of the string (or blob) and if it is 
+strings. SQLite needs to know the length of the string (or blob) and it is 
 more efficient if explicit <strong>strlen()</strong> calls can be avoided.</p>
 
 <h3>
@@ -287,14 +306,12 @@ See: <a href="http://www.sqlite.org/threadsafe.html">http://www.sqlite.org/threa
 <h3>
 <a name="paypal" class="anchor" href="#paypal"><span class="octicon octicon-link"></span></a>PayPal</h3>
 
-<span>
-<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
-<input type="hidden" name="cmd" value="_s-xclick">
-<input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----
-">
-<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+<p><strong><a href="mailto:markku.linnoskivi@gmail.com">markku.linnoskivi@gmail.com</a></strong></p>
+
+<div>
+
 <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
-</span>
+</div>
 
 <h3>
 <a name="bitcoin" class="anchor" href="#bitcoin"><span class="octicon octicon-link"></span></a>Bitcoin</h3>
