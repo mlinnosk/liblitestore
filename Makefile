@@ -18,6 +18,10 @@ TEST_INC = ./src
 .PHONY: all
 all: ${TARGET_LIB}
 
+.PHONY: example
+example: $(TARGET_LIB)
+	$(CC) -O2 -o example ./tests/example.c -I$(TEST_INC) -L./ -l$(LIB_NAME) -lsqlite3 
+
 .PHONY: memtest
 memtest: $(TEST_MAIN)
 	LD_LIBRARY_PATH=. valgrind --tool=memcheck ./$(TEST_MAIN)

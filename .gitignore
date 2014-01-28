@@ -1,3 +1,4 @@
 litestore_test
 *.o
 *.so
+example
