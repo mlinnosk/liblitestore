@@ -113,9 +113,24 @@ int failCb(litestore_blob_t, void*)
 
 }  // namespace
 
-TEST_F(LitestoreRawTest, open_and_close)
+TEST_F(LitestoreRawTest, check_version)
 {
-    SUCCEED();
+    sqlite3* db = (sqlite3*)litestore_native_ctx(ctx);
+    sqlite3_stmt* s = NULL;
+    const std::string stmt("SELECT schema_version FROM meta;");
+    ASSERT_EQ(
+        SQLITE_OK,
+        sqlite3_prepare_v2(db, stmt.c_str(), stmt.length(), &s, NULL));
+    if (sqlite3_step(s) == SQLITE_ROW)
+    {
+        EXPECT_EQ(1, sqlite3_column_int(s, 0));
+        sqlite3_finalize(s);
+    }
+    else
+    {
+        sqlite3_finalize(s);
+        FAIL();
+    }
 }
 
 TEST_F(LitestoreRawTest, transactions_rollback)

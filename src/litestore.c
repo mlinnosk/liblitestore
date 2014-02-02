@@ -18,6 +18,9 @@ extern "C"
 
 #define UNUSED(x) (void)(x)
 
+/* Current schema version */
+#define LITESTORE_CURRENT_VERSION 1
+
 /**
  * The DB schema.
  */
@@ -173,7 +176,6 @@ int init_db(litestore* ctx)
     if (sqlite3_exec(ctx->db, LITESTORE_SCHEMA_V1, NULL, NULL, NULL)
         == SQLITE_OK)
     {
-        /* @todo Check schema version */
         /* @note For some reason the pragma won't work if run
            inside the same TX as schema. */
         return (sqlite3_exec(ctx->db, "PRAGMA foreign_keys = ON;",
@@ -269,6 +271,90 @@ int prepare_statements(litestore* ctx)
     }
 
     return LITESTORE_OK;
+}
+
+static
+int update_version_from(litestore* ctx, int version_in_db)
+{
+    int rv = LITESTORE_OK;
+
+    while (version_in_db != LITESTORE_CURRENT_VERSION && rv == LITESTORE_OK)
+    {
+        switch (version_in_db)
+        {
+            case 0:
+            {
+                const char* stmt =
+                    "INSERT INTO meta (schema_version) VALUES (?);";
+                sqlite3_stmt* save_version = NULL;
+                if (sqlite3_prepare_v2(ctx->db, stmt, strlen(stmt),
+                                       &save_version, NULL)
+                    == SQLITE_OK
+                    && sqlite3_bind_int(
+                        save_version, 1, LITESTORE_CURRENT_VERSION)
+                    == SQLITE_OK
+                    && sqlite3_step(save_version)
+                    == SQLITE_DONE)
+                {
+                    version_in_db = LITESTORE_CURRENT_VERSION;
+                }
+                else
+                {
+                    sqlite_error(ctx);
+                    rv = LITESTORE_ERR;
+                }
+                sqlite3_finalize(save_version);
+            }
+            break;
+
+            default:
+                rv = LITESTORE_UNSUPPORTED_VERSION;
+                break;
+        }
+    }
+
+    return rv;
+}
+
+static
+int version_update(litestore* ctx)
+{
+    int rv = LITESTORE_ERR;
+
+    if (opt_begin_tx(ctx))
+    {
+        sqlite3_stmt* get_version = NULL;
+        const char* stmt = "SELECT schema_version FROM meta;";
+        if (sqlite3_prepare_v2(ctx->db, stmt, strlen(stmt), &get_version, NULL)
+            == SQLITE_OK)
+        {
+            if (sqlite3_step(get_version) == SQLITE_ROW)
+            {
+                const int version = sqlite3_column_int(get_version, 0);
+                if (version < LITESTORE_CURRENT_VERSION)
+                {
+                    rv = update_version_from(ctx, version);
+                }
+                else if (version > LITESTORE_CURRENT_VERSION)
+                {
+                    rv = LITESTORE_UNSUPPORTED_VERSION;
+                }
+            }
+            else
+            {
+                rv = update_version_from(ctx, 0);
+            }
+            sqlite3_finalize(get_version);
+        }
+        else
+        {
+            sqlite_error(ctx);
+        }
+
+        rv = opt_end_tx(ctx, rv);
+    }
+
+    return rv;
 }
 
 static
@@ -1159,7 +1245,10 @@ int litestore_open(const char* file_name,
             *ctx = NULL;
             return LITESTORE_ERR;
         }
-        return prepare_statements(*ctx);
+        if (prepare_statements(*ctx) == LITESTORE_OK)
+        {
+            return version_update(*ctx);
+        }
     }
     return LITESTORE_ERR;
 }
