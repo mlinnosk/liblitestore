@@ -103,12 +103,12 @@ int main(const int argc, const char** argv)
         return -1;
     }
 
-    /* Save raw data */
+    /* Create raw data */
     const char* key = "Hello";
     const char* value = "World!";
-    if (litestore_save_raw(ls,
-                           litestore_slice_str(key),
-                           litestore_make_blob(value, strlen(value)))
+    if (litestore_create_raw(ls,
+                             litestore_slice_str(key),
+                             litestore_make_blob(value, strlen(value)))
         != LITESTORE_OK)
     {
         litestore_close(ls);
@@ -116,11 +116,11 @@ int main(const int argc, const char** argv)
         return -1;
     }
 
-    /* Read the saved data, note callback usage */
+    /* Read the created data, note callback usage */
     char* res = NULL;
-    if (litestore_get_raw(ls,
-                          litestore_slice_str(key),
-                          &alloc_str, &res)
+    if (litestore_read_raw(ls,
+                           litestore_slice_str(key),
+                           &alloc_str, &res)
         == LITESTORE_OK)
     {
         printf("%s %s\n", key, res);
@@ -139,14 +139,14 @@ int main(const int argc, const char** argv)
 
 Basics
 ------
-Litestore can save **objects**. Each **object** has a **key** and a **value**.
+Litestore can create **objects**. Each **object** has a **key** and a **value**.
 The value can have different types. The key is a user defined **UTF-8 encoded**
 string. It can have arbitrary length, though this naturally affects performance
 since objects are accessed based on the key.
 
 ### Object values
 #### Value types
-Litestore can save four (4) different types of objects. These are:
+Litestore can create four (4) different types of objects. These are:
 * null
 * raw
 * array

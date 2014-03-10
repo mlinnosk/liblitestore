@@ -55,7 +55,7 @@ struct VecIteratorTest : Test
 
 TEST_F(MapIteratorTest, kv_iterator_for_map_iterates)
 {
-    litestore_kv_iterator iter = mapIter.getIter();
+    litestore_kv_iterator iter = mapIter.readIter();
     int i = 0;
 
     for (iter.begin(iter.user_data);
@@ -77,7 +77,7 @@ TEST_F(MapIteratorTest, kv_iterator_for_map_iterates)
 
 TEST_F(MapIteratorTest, kv_iterator_produces_values)
 {
-    litestore_kv_iterator iter = mapIter.getIter();
+    litestore_kv_iterator iter = mapIter.readIter();
     StrMap m;
     for (iter.begin(iter.user_data);
          !iter.end(iter.user_data);
@@ -105,7 +105,7 @@ TEST_F(MapIteratorTest, kv_iterator_produces_values)
 
 TEST_F(VecIteratorTest, array_iterator_for_vec_iterates)
 {
-    litestore_array_iterator iter = vecIter.getIter();
+    litestore_array_iterator iter = vecIter.readIter();
     int i = 0;
 
     for (iter.begin(iter.user_data);
@@ -127,7 +127,7 @@ TEST_F(VecIteratorTest, array_iterator_for_vec_iterates)
 
 TEST_F(VecIteratorTest, array_iterator_produces_values)
 {
-    litestore_array_iterator iter = vecIter.getIter();
+    litestore_array_iterator iter = vecIter.readIter();
     StrVec vec;
     for (iter.begin(iter.user_data);
          !iter.end(iter.user_data);

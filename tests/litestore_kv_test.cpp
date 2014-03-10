@@ -124,9 +124,9 @@ int buildMap(litestore_slice_t /* key */,
 }  // namespace
 
 
-TEST_F(LitestoreKVTest, save_kv_saves)
+TEST_F(LitestoreKVTest, create_kv_creates)
 {
-    ASSERT_LS_OK(litestore_save_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_kv(ctx, slice(key), dataIter.readIter()));
 
     const Objects res = readObjects();
     ASSERT_EQ(1u, res.size());
@@ -138,38 +138,38 @@ TEST_F(LitestoreKVTest, save_kv_saves)
 
 TEST_F(LitestoreKVTest, delete_deletes_kvs)
 {
-    ASSERT_LS_OK(litestore_save_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_kv(ctx, slice(key), dataIter.readIter()));
     ASSERT_LS_OK(litestore_delete(ctx, slice(key)));
 
     EXPECT_TRUE(readObjects().empty());
     EXPECT_TRUE(readKVDatas().empty());
 }
 
-TEST_F(LitestoreKVTest, get_kv_retrieves_data)
+TEST_F(LitestoreKVTest, read_kv_retrieves_data)
 {
-    ASSERT_LS_OK(litestore_save_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_kv(ctx, slice(key), dataIter.readIter()));
     iter::StrMap result;
-    ASSERT_LS_OK(litestore_get_kv(ctx, slice(key), &buildMap, &result));
+    ASSERT_LS_OK(litestore_read_kv(ctx, slice(key), &buildMap, &result));
     EXPECT_EQ(data, result);
 }
 
-TEST_F(LitestoreKVTest, get_kv_returns_error_for_null)
+TEST_F(LitestoreKVTest, read_kv_returns_error_for_null)
 {
-    ASSERT_LS_OK(litestore_save_null(ctx, slice(key)));
+    ASSERT_LS_OK(litestore_create_null(ctx, slice(key)));
     iter::StrMap result;
-    EXPECT_LS_ERR(litestore_get_kv(ctx, slice(key), &buildMap, &result));
+    EXPECT_LS_ERR(litestore_read_kv(ctx, slice(key), &buildMap, &result));
 }
 
 TEST_F(LitestoreKVTest, kv_to_null_to_kv_to_raw_to_kv)
 {
-    ASSERT_LS_OK(litestore_save_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_kv(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(3, readObjects()[0].type);  // LS_KV
 
     ASSERT_LS_OK(litestore_update_null(ctx, slice(key)));
     EXPECT_EQ(0, readObjects()[0].type);  // LS_NULL
     ASSERT_TRUE(readKVDatas().empty());
 
-    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(3, readObjects()[0].type);  // LS_KV
     ASSERT_FALSE(readKVDatas().empty());
 
@@ -178,30 +178,30 @@ TEST_F(LitestoreKVTest, kv_to_null_to_kv_to_raw_to_kv)
     EXPECT_EQ(1, readObjects()[0].type);  // LS_RAW
     ASSERT_TRUE(readKVDatas().empty());
 
-    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(3, readObjects()[0].type);  // LS_KV
     ASSERT_FALSE(readKVDatas().empty());
 }
 
 TEST_F(LitestoreKVTest, update_existing_contents)
 {
-    ASSERT_LS_OK(litestore_save_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_kv(ctx, slice(key), dataIter.readIter()));
 
     data["foo"] = "foo";
     data["bar"] = "bar";
-    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(data, kvDataToMap(readKVDatas()));
 }
 
 TEST_F(LitestoreKVTest, add_new_keys)
 {
-    ASSERT_LS_OK(litestore_save_kv(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_kv(ctx, slice(key), dataIter.readIter()));
 
     iter::StrMap m;
     m["test1"] = "1";
     m["test2"] = "2";
     iter::MapIter iter(m);
-    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), iter.getIter()));
+    ASSERT_LS_OK(litestore_update_kv(ctx, slice(key), iter.readIter()));
     m.insert(data.begin(), data.end());
     EXPECT_EQ(m, kvDataToMap(readKVDatas()));
 }

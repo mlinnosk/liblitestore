@@ -107,7 +107,7 @@ int litestore_commit_tx(litestore* ctx);
  */
 int litestore_rollback_tx(litestore* ctx);
 /**
- * Save 'null' value int the store.
+ * Create 'null' value int the store.
  * Inserts the given key in the store.
  * Will fail if key exists.
  *
@@ -116,9 +116,9 @@ int litestore_rollback_tx(litestore* ctx);
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_save_null(litestore* ctx, litestore_slice_t key);
+int litestore_create_null(litestore* ctx, litestore_slice_t key);
 /**
- * Get 'null' value.
+ * Read 'null' value.
  * Checks for existance, since value is null.
  *
  * @param ctx
@@ -126,7 +126,7 @@ int litestore_save_null(litestore* ctx, litestore_slice_t key);
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_get_null(litestore* ctx, litestore_slice_t key);
+int litestore_read_null(litestore* ctx, litestore_slice_t key);
 /**
  * Update an object to have type of 'null'.
  * Efectively will delete other data if the the type is other than null.
@@ -139,7 +139,7 @@ int litestore_get_null(litestore* ctx, litestore_slice_t key);
  */
 int litestore_update_null(litestore* ctx, litestore_slice_t key);
 /**
- * Save 'raw' value int the store.
+ * Create 'raw' value int the store.
  * Associate the given (new) key with the given value.
  * Will fail if key exists.
  *
@@ -151,19 +151,19 @@ int litestore_update_null(litestore* ctx, litestore_slice_t key);
  * @return LITESTORE_OK on success
  *         LITESTORE_ERR on error.
  */
-int litestore_save_raw(litestore* ctx,
-                       litestore_slice_t key,
-                       litestore_blob_t value);
+int litestore_create_raw(litestore* ctx,
+                         litestore_slice_t key,
+                         litestore_blob_t value);
 /**
- * A callback to be used with get_raw.
+ * A callback to be used with read_raw.
  *
  * @param value The data read.
  * @param user_data User provided data.
  * @return On success LITESTORE_OK, user defined otherwise.
  */
-typedef int (*litestore_get_raw_cb)(litestore_blob_t value, void* user_data);
+typedef int (*litestore_read_raw_cb)(litestore_blob_t value, void* user_data);
 /**
- * Get a 'raw' value with the given key.
+ * Read a 'raw' value with the given key.
  *
  * @param ctx
  * @param key The key.
@@ -174,8 +174,8 @@ typedef int (*litestore_get_raw_cb)(litestore_blob_t value, void* user_data);
  *         Callback return if other than LITESTORE_OK,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_get_raw(litestore* ctx, litestore_slice_t key,
-                      litestore_get_raw_cb callback, void* user_data);
+int litestore_read_raw(litestore* ctx, litestore_slice_t key,
+                       litestore_read_raw_cb callback, void* user_data);
 /**
  * Update existing value with new 'raw' data.
  * If the key does not exist, it will be created.
@@ -192,7 +192,7 @@ int litestore_update_raw(litestore* ctx,
                          litestore_slice_t key,
                          litestore_blob_t value);
 /**
- * Save array-object in the store.
+ * Create array-object in the store.
  * Associate all values described by 'data' iterator
  * to the given key.
  * Will fail if key exists.
@@ -203,12 +203,12 @@ int litestore_update_raw(litestore* ctx,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_save_array(litestore* ctx,
-                         litestore_slice_t key,
-                         litestore_array_iterator values);
+int litestore_create_array(litestore* ctx,
+                           litestore_slice_t key,
+                           litestore_array_iterator values);
 
 /**
- * Callback used with get_array.
+ * Callback used with read_array.
  *
  * @param key The key.
  * @param array_index Index of the value that was stored.
@@ -216,12 +216,12 @@ int litestore_save_array(litestore* ctx,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-typedef int (*litestore_get_array_cb)(litestore_slice_t key,
-                                      unsigned array_index,
-                                      litestore_blob_t value,
-                                      void* user_data);
+typedef int (*litestore_read_array_cb)(litestore_slice_t key,
+                                       unsigned array_index,
+                                       litestore_blob_t value,
+                                       void* user_data);
 /**
- * Get an array-object with the given key.
+ * Read an array-object with the given key.
  * The given callback will be called for each value kv pair.
  * Values will be retrieved in the same order they were stored.
  *
@@ -232,9 +232,9 @@ typedef int (*litestore_get_array_cb)(litestore_slice_t key,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_get_array(litestore* ctx,
-                        litestore_slice_t key,
-                        litestore_get_array_cb callback, void* user_data);
+int litestore_read_array(litestore* ctx,
+                         litestore_slice_t key,
+                         litestore_read_array_cb callback, void* user_data);
 /**
  * Update existing value with new 'array' data.
  * If the key does not exist, it will be created.
@@ -246,7 +246,7 @@ int litestore_get_array(litestore* ctx,
  *       not listed by 'data' will _not_ be deleted. For some
  *       this might be counter intuitive. Reasoning behind this
  *       is performance and simplicity.
- *       If one needs to delete, use delete and then save.
+ *       If one needs to delete, use delete and then create.
  *       Updates are "incremental".
  *
  * @param ctx
@@ -259,7 +259,7 @@ int litestore_update_array(litestore* ctx,
                            litestore_slice_t key,
                            litestore_array_iterator values);
 /**
- * Save 'key-value'-object in the store.
+ * Create 'key-value'-object in the store.
  * Associate all key-value pairs described by 'data' iterator
  * to the given key.
  * Will fail if key exists.
@@ -270,11 +270,11 @@ int litestore_update_array(litestore* ctx,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_save_kv(litestore* ctx,
-                      litestore_slice_t key,
-                      litestore_kv_iterator values);
+int litestore_create_kv(litestore* ctx,
+                        litestore_slice_t key,
+                        litestore_kv_iterator values);
 /**
- * Callback used with get_kv.
+ * Callback used with read_kv.
  *
  * @param key The key.
  * @param key_len Length of the key.
@@ -285,12 +285,12 @@ int litestore_save_kv(litestore* ctx,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-typedef int (*litestore_get_kv_cb)(litestore_slice_t key,
-                                   litestore_blob_t kv_key,
-                                   litestore_blob_t kv_value,
-                                   void* user_data);
+typedef int (*litestore_read_kv_cb)(litestore_slice_t key,
+                                    litestore_blob_t kv_key,
+                                    litestore_blob_t kv_value,
+                                    void* user_data);
 /**
- * Get a 'key-value'-object with the given key.
+ * Read a 'key-value'-object with the given key.
  * The given callback will be called for each value kv pair.
  *
  * @param ctx
@@ -301,9 +301,9 @@ typedef int (*litestore_get_kv_cb)(litestore_slice_t key,
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_get_kv(litestore* ctx,
-                     litestore_slice_t key,
-                     litestore_get_kv_cb callback, void* user_data);
+int litestore_read_kv(litestore* ctx,
+                      litestore_slice_t key,
+                      litestore_read_kv_cb callback, void* user_data);
 /**
  * Update existing value with new 'key-value' data.
  * If the key does not exist, it will be created.

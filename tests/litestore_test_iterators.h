@@ -2,7 +2,8 @@
  * Copyright (c) 2014 Markku Linnoskivi
  *
  * See the file LICENSE.txt for copying permission.
- */#include <map>
+ */
+#include <map>
 #include <string>
 #include <vector>
 
@@ -20,8 +21,8 @@ typedef std::map<std::string, std::string> StrMap;
 struct MapIter
 {
     MapIter(StrMap& m)
-        : map(m),
-          curr(map.end())
+    : map(m),
+      curr(map.end())
     {}
     static void begin(void* user_data)
     {
@@ -48,16 +49,16 @@ struct MapIter
         *value = mi->curr->second.c_str();
         *value_len = mi->curr->second.length();
     }
-    litestore_kv_iterator getIter()
+    litestore_kv_iterator readIter()
     {
         litestore_kv_iterator i =
-        {
-            this,
-            &MapIter::begin,
-            &MapIter::end,
-            &MapIter::next,
-            &MapIter::value
-        };
+            {
+                this,
+                &MapIter::begin,
+                &MapIter::end,
+                &MapIter::next,
+                &MapIter::value
+            };
         return i;
     }
 
@@ -71,8 +72,8 @@ typedef std::vector<std::string> StrVec;
 struct VecIter
 {
     VecIter(StrVec& v)
-       : vec(v),
-         curr(vec.end())
+    : vec(v),
+      curr(vec.end())
     {}
 
     static void begin(void* user_data)
@@ -97,16 +98,16 @@ struct VecIter
         *value = mi->curr->c_str();
         *value_len = mi->curr->length();
     }
-    litestore_array_iterator getIter()
+    litestore_array_iterator readIter()
     {
         litestore_array_iterator i =
-        {
-            this,
-            &VecIter::begin,
-            &VecIter::end,
-            &VecIter::next,
-            &VecIter::value
-        };
+            {
+                this,
+                &VecIter::begin,
+                &VecIter::end,
+                &VecIter::next,
+                &VecIter::value
+            };
         return i;
     }
 

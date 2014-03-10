@@ -77,29 +77,29 @@ int toStrVec(litestore_slice_t /* key */,
 
 }  // namespace
 
-TEST_F(LitestoreArrayTest, save_array_saves)
+TEST_F(LitestoreArrayTest, create_array_creates)
 {
-    ASSERT_LS_OK(litestore_save_array(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_create_array(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(data, readArrayDatas());
 }
 
-TEST_F(LitestoreArrayTest, get_array_gets)
+TEST_F(LitestoreArrayTest, read_array_reads)
 {
-    litestore_save_array(ctx, slice(key), dataIter.getIter());
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
     iter::StrVec res;
-    ASSERT_LS_OK(litestore_get_array(ctx, slice(key), &toStrVec, &res));
+    ASSERT_LS_OK(litestore_read_array(ctx, slice(key), &toStrVec, &res));
     EXPECT_EQ(data, res);
 }
 
-TEST_F(LitestoreArrayTest, get_array_returns_error_for_non_existing)
+TEST_F(LitestoreArrayTest, read_array_returns_error_for_non_existing)
 {
     iter::StrVec res;
-    ASSERT_LS_ERR(litestore_get_array(ctx, slice(key), &toStrVec, &res));
+    ASSERT_LS_ERR(litestore_read_array(ctx, slice(key), &toStrVec, &res));
 }
 
 TEST_F(LitestoreArrayTest, delete_deletes_array_data)
 {
-    litestore_save_array(ctx, slice(key), dataIter.getIter());
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
     ASSERT_LS_OK(litestore_delete(ctx, slice(key)));
 
     EXPECT_TRUE(readObjects().empty());
@@ -108,14 +108,14 @@ TEST_F(LitestoreArrayTest, delete_deletes_array_data)
 
 TEST_F(LitestoreArrayTest, array_to_null_to_array_to_raw_to_array)
 {
-    litestore_save_array(ctx, slice(key), dataIter.getIter());
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
     EXPECT_EQ(2, readObjects()[0].type);  // LS_ARRAY
 
     ASSERT_LS_OK(litestore_update_null(ctx, slice(key)));
     EXPECT_EQ(0, readObjects()[0].type);  // LS_NULL
     ASSERT_TRUE(readArrayDatas().empty());
 
-    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(2, readObjects()[0].type);  // LS_ARRAY
     ASSERT_FALSE(readArrayDatas().empty());
 
@@ -124,36 +124,36 @@ TEST_F(LitestoreArrayTest, array_to_null_to_array_to_raw_to_array)
     EXPECT_EQ(1, readObjects()[0].type);  // LS_RAW
     ASSERT_TRUE(readArrayDatas().empty());
 
-    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(2, readObjects()[0].type);  // LS_ARRAY
     ASSERT_FALSE(readArrayDatas().empty());
 }
 
-TEST_F(LitestoreArrayTest, get_array_returns_error_for_null)
+TEST_F(LitestoreArrayTest, read_array_returns_error_for_null)
 {
-    litestore_save_null(ctx, slice(key));
+    litestore_create_null(ctx, slice(key));
     iter::StrVec result;
-    EXPECT_LS_ERR(litestore_get_array(ctx, slice(key), &toStrVec, &result));
+    EXPECT_LS_ERR(litestore_read_array(ctx, slice(key), &toStrVec, &result));
 }
 
 TEST_F(LitestoreArrayTest, update_existing_contents)
 {
-    litestore_save_array(ctx, slice(key), dataIter.getIter());
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
 
     data[0] = "1";
     data[1] = "2";
     data[2] = "3";
-    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(data, readArrayDatas());
 }
 
 TEST_F(LitestoreArrayTest, add_new_data)
 {
-    litestore_save_array(ctx, slice(key), dataIter.getIter());
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
 
     data.push_back("1");
     data.push_back("2");
-    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.getIter()));
+    ASSERT_LS_OK(litestore_update_array(ctx, slice(key), dataIter.readIter()));
     EXPECT_EQ(data, readArrayDatas());
 }
 
