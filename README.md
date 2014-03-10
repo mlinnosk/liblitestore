@@ -31,6 +31,8 @@ SQLite is released in the public domain,
 see: http://www.sqlite.org/copyright.html
 This library does not modify SQLite, only links against it.
 
+Please inform me if you use the library (markku.linnoskivi@gmail.com)!
+
 Building
 --------
 make && sudo make install
