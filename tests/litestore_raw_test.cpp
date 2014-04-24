@@ -111,6 +111,17 @@ int failCb(litestore_blob_t, void*)
     return 100;
 }
 
+int vecPushBack(litestore_slice_t key, void* user_data)
+{
+   std::vector<std::string>* v =
+       static_cast<std::vector<std::string>*>(user_data);
+   if (key.data)
+   {
+       v->push_back(std::string(key.data, key.length));
+   }
+   return LITESTORE_OK;
+}
+
 }  // namespace
 
 TEST_F(LitestoreRawTest, check_version)
@@ -283,6 +294,74 @@ TEST_F(LitestoreRawTx, read_raw_returns_callback_error)
 {
     litestore_create_raw(ctx, slice(key), blob(rawData));
     EXPECT_EQ(100, litestore_read_raw(ctx, slice(key), &failCb, NULL));
+}
+
+TEST_F(LitestoreRawTx, read_keys_returns_all)
+{
+    const std::string k1("key1");
+    const std::string k2("key2");
+    const std::string k3("key3");
+
+    litestore_create_null(ctx, slice(k1));
+    litestore_create_null(ctx, slice(k2));
+    litestore_create_null(ctx, slice(k3));
+
+    std::vector<std::string> keys;
+    EXPECT_LS_OK(litestore_read_keys(
+                     ctx, slice(std::string("*")), &vecPushBack, &keys));
+
+    ASSERT_EQ(3u, keys.size());
+    EXPECT_EQ(k1, keys[0]);
+    EXPECT_EQ(k2, keys[1]);
+    EXPECT_EQ(k3, keys[2]);
+}
+
+TEST_F(LitestoreRawTx, read_keys_with_pattern1)
+{
+    const std::string k1("key1");
+    const std::string k2("foo1");
+
+    litestore_create_null(ctx, slice(k1));
+    litestore_create_null(ctx, slice(k2));
+
+    std::vector<std::string> keys;
+    EXPECT_LS_OK(litestore_read_keys(
+                     ctx, slice(std::string("key*")), &vecPushBack, &keys));
+
+    ASSERT_EQ(1u, keys.size());
+    EXPECT_EQ(k1, keys[0]);
+}
+
+TEST_F(LitestoreRawTx, read_keys_with_pattern2)
+{
+    const std::string k1("key1foo");
+    const std::string k2("key2foo");
+
+    litestore_create_null(ctx, slice(k1));
+    litestore_create_null(ctx, slice(k2));
+
+    std::vector<std::string> keys;
+    EXPECT_LS_OK(litestore_read_keys(
+                     ctx, slice(std::string("key?foo")), &vecPushBack, &keys));
+
+    ASSERT_EQ(2u, keys.size());
+    EXPECT_EQ(k1, keys[0]);
+    EXPECT_EQ(k2, keys[1]);
+}
+
+TEST_F(LitestoreRawTx, read_keys_no_match)
+{
+    const std::string k1("key1foo");
+    const std::string k2("key2foo");
+
+    litestore_create_null(ctx, slice(k1));
+    litestore_create_null(ctx, slice(k2));
+
+    std::vector<std::string> keys;
+    EXPECT_LS_OK(litestore_read_keys(
+                     ctx, slice(std::string("foo")), &vecPushBack, &keys));
+
+    ASSERT_TRUE(keys.empty());
 }
 
 }  // namespace ls

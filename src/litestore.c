@@ -71,6 +71,7 @@ sqlite3_stmt* create_key;
 sqlite3_stmt* read_key;
 sqlite3_stmt* delete_key;
 sqlite3_stmt* update_type;
+sqlite3_stmt* read_keys;
 /* raw */
 sqlite3_stmt* create_raw_data;
 sqlite3_stmt* read_raw_data;
@@ -211,6 +212,9 @@ int prepare_statements(litestore* ctx)
         || prepare_stmt(ctx,
                         "UPDATE objects SET type = ? WHERE id = ?;",
                         &(ctx->update_type)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "SELECT name FROM objects WHERE name GLOB ?;",
+                        &(ctx->read_keys)) != LITESTORE_OK
         /* tx */
         || prepare_stmt(ctx,
                         "BEGIN IMMEDIATE TRANSACTION;",
@@ -372,6 +376,7 @@ int finalize_statements(litestore* ctx)
     finalize_stmt(&(ctx->read_key));
     finalize_stmt(&(ctx->delete_key));
     finalize_stmt(&(ctx->update_type));
+    finalize_stmt(&(ctx->read_keys));
     /* tx */
     finalize_stmt(&(ctx->begin_tx));
     finalize_stmt(&(ctx->commit_tx));
@@ -1496,6 +1501,63 @@ int litestore_delete(litestore* ctx, litestore_slice_t key)
 
     return rv;
 }
+
+int litestore_read_keys(litestore* ctx,
+                        litestore_slice_t key_pattern,
+                        litestore_read_keys_cb callback,
+                        void* user_data)
+{
+    UNUSED(key_pattern);
+
+    int rv = LITESTORE_ERR;
+
+    if (ctx->read_keys && callback)
+    {
+        if (sqlite3_bind_text(ctx->read_keys, 1,
+                              key_pattern.data, key_pattern.length,
+                              SQLITE_STATIC)
+            != SQLITE_OK)
+        {
+            sqlite_error(ctx);
+        }
+        else
+        {
+            int rc = 0;
+
+            while ((rc = sqlite3_step(ctx->read_keys)) != SQLITE_DONE)
+            {
+                if (rc == SQLITE_ROW)
+                {
+                    const unsigned char* key =
+                        sqlite3_column_text(ctx->read_keys, 0);
+                    const int key_len =
+                        sqlite3_column_bytes(ctx->read_keys, 0);
+                    if ((*callback)(
+                            litestore_slice((const char*)key, 0, key_len),
+                            user_data)
+                        != LITESTORE_OK)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    sqlite_error(ctx);
+                    break;
+                }
+            }  /* while */
+            if (rc == SQLITE_DONE)
+            {
+                rv = LITESTORE_OK;
+            }
+
+            sqlite3_reset(ctx->read_keys);
+        }
+    }
+
+    return rv;
+}
+
 
 #ifdef __cplusplus
 }  // extern "C"

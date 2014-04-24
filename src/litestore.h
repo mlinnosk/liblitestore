@@ -339,6 +339,33 @@ int litestore_update_kv(litestore* ctx,
  *         LITESTORE_ERR on other error.
  */
 int litestore_delete(litestore* ctx, litestore_slice_t key);
+/**
+ * Callback used with read_keys.
+ *
+ * @param key The key.
+ * @param user_data The user provided data.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+typedef int (*litestore_read_keys_cb)(litestore_slice_t key, void* user_data);
+/**
+ * Read all keys matching the given pattern.
+ * @see GLOB: http://www.sqlite.org/lang_expr.html
+ * The given callback will be called for each key.
+ * No ordering guarantees (implementation specific).
+ *
+ * @param ctx
+ * @param key The key.
+ * @param callback A Function pointer to a callback called for each key
+ * @param user_data Pointer to user data passed for callback calls.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+int litestore_read_keys(litestore* ctx,
+                        litestore_slice_t key_pattern,
+                        litestore_read_keys_cb callback,
+                        void* user_data);
+
 
 #ifdef __cplusplus
 }  /* extern "C" */
