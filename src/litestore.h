@@ -254,7 +254,7 @@ int litestore_read_array(litestore* ctx,
  *
  * @note If the object exists, only the array indexes listed
  *       by 'data' will be updated. Possibly existing indexes that are
- *       not listed by 'data' will _not_ be deleted. For some
+ *       not listed by 'values' will _not_ be deleted. For some
  *       this might be counter intuitive. Reasoning behind this
  *       is performance and simplicity.
  *       If one needs to delete, use delete and then create.
@@ -323,7 +323,7 @@ int litestore_read_kv(litestore* ctx,
  *
  * @note If the object exists, only the key-value pairs listed
  *       by 'data' will be updated. Possibly existing KVs that are
- *       not listed by 'data' will _not_ be deleted. For some
+ *       not listed by 'values' will _not_ be deleted. For some
  *       this might be counter intuitive. Reasoning behind this
  *       is performance and simplicity. One can change only
  *       one value of a key-value pair without affecting the others.
