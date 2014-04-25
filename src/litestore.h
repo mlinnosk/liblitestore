@@ -33,6 +33,17 @@ enum
 };
 
 /**
+ * Possible db.objects.type values
+ */
+enum
+{
+    LITESTORE_NULL_T = 0,
+    LITESTORE_RAW_T = 1,
+    LITESTORE_ARRAY_T = 2,
+    LITESTORE_KV_T = 3
+};
+
+/**
  * @return The actual context of the DB. To facilitate testing.
  */
 void* litestore_native_ctx(litestore* ctx);
@@ -343,11 +354,14 @@ int litestore_delete(litestore* ctx, litestore_slice_t key);
  * Callback used with read_keys.
  *
  * @param key The key.
+ * @param object_type The type of the object.
  * @param user_data The user provided data.
  * @return LITESTORE_OK on success,
  *         LITESTORE_ERR otherwise.
  */
-typedef int (*litestore_read_keys_cb)(litestore_slice_t key, void* user_data);
+typedef int (*litestore_read_keys_cb)(litestore_slice_t key,
+                                      int object_type,
+                                      void* user_data);
 /**
  * Read all keys matching the given pattern.
  * @see GLOB: http://www.sqlite.org/lang_expr.html

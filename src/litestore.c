@@ -92,10 +92,10 @@ sqlite3_stmt* delete_kv_data;
 /* Possible db.objects.type values */
 enum
 {
-    LS_NULL = 0,
-    LS_RAW = 1,
-    LS_ARRAY = 2,
-    LS_KV = 3
+    LS_NULL = LITESTORE_NULL_T,
+    LS_RAW = LITESTORE_RAW_T,
+    LS_ARRAY = LITESTORE_ARRAY_T,
+    LS_KV = LITESTORE_KV_T
 };
 
 /* The native db ID type */
@@ -213,7 +213,7 @@ int prepare_statements(litestore* ctx)
                         "UPDATE objects SET type = ? WHERE id = ?;",
                         &(ctx->update_type)) != LITESTORE_OK
         || prepare_stmt(ctx,
-                        "SELECT name FROM objects WHERE name GLOB ?;",
+                        "SELECT name, type FROM objects WHERE name GLOB ?;",
                         &(ctx->read_keys)) != LITESTORE_OK
         /* tx */
         || prepare_stmt(ctx,
@@ -1507,8 +1507,6 @@ int litestore_read_keys(litestore* ctx,
                         litestore_read_keys_cb callback,
                         void* user_data)
 {
-    UNUSED(key_pattern);
-
     int rv = LITESTORE_ERR;
 
     if (ctx->read_keys && callback)
@@ -1534,6 +1532,7 @@ int litestore_read_keys(litestore* ctx,
                         sqlite3_column_bytes(ctx->read_keys, 0);
                     if ((*callback)(
                             litestore_slice((const char*)key, 0, key_len),
+                            sqlite3_column_int(ctx->read_keys, 1),
                             user_data)
                         != LITESTORE_OK)
                     {

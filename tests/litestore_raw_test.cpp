@@ -111,13 +111,14 @@ int failCb(litestore_blob_t, void*)
     return 100;
 }
 
-int vecPushBack(litestore_slice_t key, void* user_data)
+int vecPushBack(litestore_slice_t key, int objectType, void* user_data)
 {
-   std::vector<std::string>* v =
-       static_cast<std::vector<std::string>*>(user_data);
+    std::vector<std::pair<std::string, int> >* v =
+        static_cast<std::vector<std::pair<std::string, int> >*>(user_data);
    if (key.data)
    {
-       v->push_back(std::string(key.data, key.length));
+       v->push_back(std::make_pair(std::string(key.data, key.length),
+                                   objectType));
    }
    return LITESTORE_OK;
 }
@@ -306,14 +307,17 @@ TEST_F(LitestoreRawTx, read_keys_returns_all)
     litestore_create_null(ctx, slice(k2));
     litestore_create_null(ctx, slice(k3));
 
-    std::vector<std::string> keys;
+    std::vector<std::pair<std::string, int> > keys;
     EXPECT_LS_OK(litestore_read_keys(
-                     ctx, slice(std::string("*")), &vecPushBack, &keys));
+                     ctx, litestore_slice_str("*"), &vecPushBack, &keys));
 
     ASSERT_EQ(3u, keys.size());
-    EXPECT_EQ(k1, keys[0]);
-    EXPECT_EQ(k2, keys[1]);
-    EXPECT_EQ(k3, keys[2]);
+    EXPECT_EQ(k1, keys[0].first);
+    EXPECT_EQ(LITESTORE_NULL_T, keys[0].second);
+    EXPECT_EQ(k2, keys[1].first);
+    EXPECT_EQ(LITESTORE_NULL_T, keys[1].second);
+    EXPECT_EQ(k3, keys[2].first);
+    EXPECT_EQ(LITESTORE_NULL_T, keys[2].second);
 }
 
 TEST_F(LitestoreRawTx, read_keys_with_pattern1)
@@ -324,12 +328,12 @@ TEST_F(LitestoreRawTx, read_keys_with_pattern1)
     litestore_create_null(ctx, slice(k1));
     litestore_create_null(ctx, slice(k2));
 
-    std::vector<std::string> keys;
+    std::vector<std::pair<std::string, int> > keys;
     EXPECT_LS_OK(litestore_read_keys(
-                     ctx, slice(std::string("key*")), &vecPushBack, &keys));
+                     ctx, litestore_slice_str("key*"), &vecPushBack, &keys));
 
     ASSERT_EQ(1u, keys.size());
-    EXPECT_EQ(k1, keys[0]);
+    EXPECT_EQ(k1, keys[0].first);
 }
 
 TEST_F(LitestoreRawTx, read_keys_with_pattern2)
@@ -340,13 +344,13 @@ TEST_F(LitestoreRawTx, read_keys_with_pattern2)
     litestore_create_null(ctx, slice(k1));
     litestore_create_null(ctx, slice(k2));
 
-    std::vector<std::string> keys;
+    std::vector<std::pair<std::string, int> > keys;
     EXPECT_LS_OK(litestore_read_keys(
-                     ctx, slice(std::string("key?foo")), &vecPushBack, &keys));
+                     ctx, litestore_slice_str("key?foo"), &vecPushBack, &keys));
 
     ASSERT_EQ(2u, keys.size());
-    EXPECT_EQ(k1, keys[0]);
-    EXPECT_EQ(k2, keys[1]);
+    EXPECT_EQ(k1, keys[0].first);
+    EXPECT_EQ(k2, keys[1].first);
 }
 
 TEST_F(LitestoreRawTx, read_keys_no_match)
@@ -357,9 +361,9 @@ TEST_F(LitestoreRawTx, read_keys_no_match)
     litestore_create_null(ctx, slice(k1));
     litestore_create_null(ctx, slice(k2));
 
-    std::vector<std::string> keys;
+    std::vector<std::pair<std::string, int> > keys;
     EXPECT_LS_OK(litestore_read_keys(
-                     ctx, slice(std::string("foo")), &vecPushBack, &keys));
+                     ctx, litestore_slice_str("foo"), &vecPushBack, &keys));
 
     ASSERT_TRUE(keys.empty());
 }
