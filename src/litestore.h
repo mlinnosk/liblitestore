@@ -247,6 +247,25 @@ int litestore_read_array(litestore* ctx,
                          litestore_slice_t key,
                          litestore_read_array_cb callback, void* user_data);
 /**
+ * Read a single value from an array-object with the given key
+ * at given index.
+ * The given callback will be called for value index-value pair.
+ *
+ * @param ctx
+ * @param key The key.
+ * @param array_index Index in the array to read from.
+ * @param callback A Function pointer to a callback called for each value
+ * @param user_data Pointer to user data passed for callback calls.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+int litestore_read_array_at(litestore* ctx,
+                            litestore_slice_t key,
+                            unsigned array_index,
+                            litestore_read_array_cb callback, void* user_data);
+
+
+/**
  * Update existing value with new 'array' data.
  * If the key does not exist, it will be created.
  *
@@ -306,7 +325,7 @@ typedef int (*litestore_read_kv_cb)(litestore_slice_t key,
  *
  * @param ctx
  * @param key The key.
- * @param callback A Function pointer to a callbeck called for each
+ * @param callback A Function pointer to a callback called for each
  *                 value pair.
  * @param user_data Pointer to user data passed for callback calls.
  * @return LITESTORE_OK on success,
@@ -315,6 +334,22 @@ typedef int (*litestore_read_kv_cb)(litestore_slice_t key,
 int litestore_read_kv(litestore* ctx,
                       litestore_slice_t key,
                       litestore_read_kv_cb callback, void* user_data);
+/**
+ * Read a 'key-value'-object sub key,
+ *
+ * @param ctx
+ * @param key The key.
+ * @param kv_key The sub-key.
+ * @param callback A Function pointer to a callback called the data.
+ * @param user_data Pointer to user data passed for callback calls.
+ * @return LITESTORE_OK on success,
+ *         LITESTORE_ERR otherwise.
+ */
+int litestore_read_kv_with_key(litestore* ctx,
+                               litestore_slice_t key,
+                               litestore_blob_t kv_key,
+                               litestore_read_kv_cb callback, void* user_data);
+
 /**
  * Update existing value with new 'key-value' data.
  * If the key does not exist, it will be created.

@@ -157,5 +157,26 @@ TEST_F(LitestoreArrayTest, add_new_data)
     EXPECT_EQ(data, readArrayDatas());
 }
 
+TEST_F(LitestoreArrayTest, read_array_at_reads)
+{
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
+
+    iter::StrVec res;
+    ASSERT_LS_OK(litestore_read_array_at(ctx, slice(key), 0, &toStrVec, &res));
+    ASSERT_LS_OK(litestore_read_array_at(ctx, slice(key), 2, &toStrVec, &res));
+
+    EXPECT_EQ(data[0], res[0]);
+    EXPECT_EQ(data[2], res[1]);
+}
+
+TEST_F(LitestoreArrayTest, read_array_at_fail_for_unknown_index)
+{
+    litestore_create_array(ctx, slice(key), dataIter.readIter());
+
+    iter::StrVec res;
+    EXPECT_LS_ERR(litestore_read_array_at(ctx, slice(key), 5, &toStrVec, &res));
+    EXPECT_TRUE(res.empty());
+}
+
 
 }  // namespace ls

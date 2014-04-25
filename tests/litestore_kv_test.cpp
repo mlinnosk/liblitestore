@@ -206,4 +206,28 @@ TEST_F(LitestoreKVTest, add_new_keys)
     EXPECT_EQ(m, kvDataToMap(readKVDatas()));
 }
 
+TEST_F(LitestoreKVTest, read_kv_with_key_reads)
+{
+    litestore_create_kv(ctx, slice(key), dataIter.readIter());
+
+    iter::StrMap res;
+    litestore_blob_t kv_key = litestore_make_blob("bar", strlen("bar"));
+    ASSERT_LS_OK(litestore_read_kv_with_key(ctx, slice(key), kv_key,
+                                            &buildMap, &res));
+    EXPECT_EQ(1u, res.size());
+    EXPECT_EQ(data["bar"], res["bar"]);
+}
+
+TEST_F(LitestoreKVTest, read_kv_with_unknown_key_results_in_error)
+{
+    litestore_create_kv(ctx, slice(key), dataIter.readIter());
+
+    iter::StrMap res;
+    litestore_blob_t kv_key = litestore_make_blob("unknwn", strlen("unknown"));
+    EXPECT_LS_ERR(litestore_read_kv_with_key(ctx, slice(key), kv_key,
+                                             &buildMap, &res));
+    EXPECT_TRUE(res.empty());
+}
+
+
 }  // namespace ls

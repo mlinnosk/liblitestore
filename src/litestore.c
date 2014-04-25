@@ -80,11 +80,13 @@ sqlite3_stmt* delete_raw_data;
 /* array */
 sqlite3_stmt* create_array_data;
 sqlite3_stmt* read_array_data;
+sqlite3_stmt* read_array_data_at;
 sqlite3_stmt* update_array_data;
 sqlite3_stmt* delete_array_data;
 /* kv */
 sqlite3_stmt* create_kv_data;
 sqlite3_stmt* read_kv_data;
+sqlite3_stmt* read_kv_data_with_key;
 sqlite3_stmt* update_kv_data;
 sqlite3_stmt* delete_kv_data;
 };
@@ -248,6 +250,10 @@ int prepare_statements(litestore* ctx)
                         "WHERE id = ? ORDER BY array_index;",
                         &(ctx->read_array_data)) != LITESTORE_OK
         || prepare_stmt(ctx,
+                        "SELECT array_value FROM array_data "
+                        "WHERE id = ? AND array_index = ?;",
+                        &(ctx->read_array_data_at)) != LITESTORE_OK
+        || prepare_stmt(ctx,
                         "UPDATE array_data SET array_value = ? "
                         "WHERE id = ? AND array_index = ?;",
                         &(ctx->update_array_data)) != LITESTORE_OK
@@ -262,6 +268,10 @@ int prepare_statements(litestore* ctx)
         || prepare_stmt(ctx,
                         "SELECT kv_key, kv_value FROM kv_data WHERE id = ?;",
                         &(ctx->read_kv_data)) != LITESTORE_OK
+        || prepare_stmt(ctx,
+                        "SELECT kv_value FROM kv_data "
+                        "WHERE id = ? AND kv_key = ?;",
+                        &(ctx->read_kv_data_with_key)) != LITESTORE_OK
         || prepare_stmt(ctx,
                         "UPDATE kv_data SET kv_value = ? "
                         "WHERE id = ? AND kv_key = ?;",
@@ -389,11 +399,13 @@ int finalize_statements(litestore* ctx)
     /* array */
     finalize_stmt(&(ctx->create_array_data));
     finalize_stmt(&(ctx->read_array_data));
+    finalize_stmt(&(ctx->read_array_data_at));
     finalize_stmt(&(ctx->update_array_data));
     finalize_stmt(&(ctx->delete_array_data));
     /* kv */
     finalize_stmt(&(ctx->create_kv_data));
     finalize_stmt(&(ctx->read_kv_data));
+    finalize_stmt(&(ctx->read_kv_data_with_key));
     finalize_stmt(&(ctx->update_kv_data));
     finalize_stmt(&(ctx->delete_kv_data));
 
@@ -637,10 +649,11 @@ int read_object_type(litestore* ctx,
 static
 int read_raw_data(litestore* ctx, const litestore_id_t id,
                   const void* key, const size_t key_len,
-                  void* cb, void* user_data)
+                  void* extra, void* cb, void* user_data)
 {
     UNUSED(key);
     UNUSED(key_len);
+    UNUSED(extra);
     int rv = LITESTORE_ERR;
 
     if (ctx->read_raw_data && cb)
@@ -674,8 +687,9 @@ static
 int read_array_data(litestore* ctx,
                     const litestore_id_t id,
                     const void* key, const size_t key_len,
-                    void* cb, void* user_data)
+                    void* extra, void* cb, void* user_data)
 {
+    UNUSED(extra);
     int rv = LITESTORE_ERR;
 
     if (ctx->read_array_data && cb)
@@ -725,11 +739,56 @@ int read_array_data(litestore* ctx,
 }
 
 static
+int read_array_data_at(litestore* ctx,
+                       const litestore_id_t id,
+                       const void* key, const size_t key_len,
+                       void* extra, void* cb, void* user_data)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx->read_array_data_at && cb && extra)
+    {
+        litestore_read_array_cb callback = (litestore_read_array_cb)cb;
+        const unsigned array_index = *(unsigned*)extra;
+
+        if (sqlite3_bind_int64(ctx->read_array_data_at, 1, id)
+            != SQLITE_OK
+            || sqlite3_bind_int64(ctx->read_array_data_at, 2, array_index)
+            != SQLITE_OK)
+        {
+            sqlite_error(ctx);
+        }
+        else
+        {
+            int rc = 0;
+            if ((rc = sqlite3_step(ctx->read_array_data_at)) == SQLITE_ROW)
+            {
+                const void* v =
+                    sqlite3_column_blob(ctx->read_array_data_at, 0);
+                const int v_len =
+                    sqlite3_column_bytes(ctx->read_array_data_at, 0);
+                rv = (*callback)(litestore_slice(key, 0, key_len),
+                                 array_index, litestore_make_blob(v, v_len),
+                                 user_data);
+            }
+            else if (rc != SQLITE_DONE)
+            {
+                sqlite_error(ctx);
+            }
+        }
+        sqlite3_reset(ctx->read_array_data_at);
+    }
+
+    return rv;
+}
+
+static
 int read_kv_data(litestore* ctx,
                  const litestore_id_t id,
                  const void* key, const size_t key_len,
-                 void* cb, void* user_data)
+                 void* extra, void* cb, void* user_data)
 {
+    UNUSED(extra);
     int rv = LITESTORE_ERR;
 
     if (ctx->read_kv_data && cb)
@@ -781,12 +840,58 @@ int read_kv_data(litestore* ctx,
     return rv;
 }
 
+static
+int read_kv_data_with_key(litestore* ctx,
+                          const litestore_id_t id,
+                          const void* key, const size_t key_len,
+                          void* extra, void* cb, void* user_data)
+{
+    int rv = LITESTORE_ERR;
+
+    if (ctx->read_kv_data_with_key && cb && extra)
+    {
+        litestore_read_kv_cb callback = (litestore_read_kv_cb)cb;
+        const litestore_blob_t* kv_key = (litestore_blob_t*)extra;
+
+        if (sqlite3_bind_int64(ctx->read_kv_data_with_key, 1, id)
+            != SQLITE_OK
+            || sqlite3_bind_blob(ctx->read_kv_data_with_key, 2,
+                                 kv_key->data, kv_key->size, SQLITE_STATIC)
+            != SQLITE_OK)
+        {
+            sqlite_error(ctx);
+        }
+        else
+        {
+            int rc = 0;
+            if ((rc = sqlite3_step(ctx->read_kv_data_with_key)) == SQLITE_ROW)
+            {
+                const void* v =
+                    sqlite3_column_blob(ctx->read_kv_data_with_key, 0);
+                const int v_len =
+                    sqlite3_column_bytes(ctx->read_kv_data_with_key, 0);
+                rv = (*callback)(litestore_slice(key, 0, key_len),
+                                 *kv_key, litestore_make_blob(v, v_len),
+                                 user_data);
+            }
+            else if (rc != SQLITE_DONE)
+            {
+                sqlite_error(ctx);
+            }
+        }
+        sqlite3_reset(ctx->read_kv_data_with_key);
+    }
+
+    return rv;
+}
+
 typedef struct
 {
     int object_type;
     int (*read)(litestore*, const litestore_id_t,
-                const void*, const size_t,
-                void*, void*);
+                const void* /* key */, const size_t /* key_len */,
+                void* /* extra */, void* /* cb */, void* /* user_data */);
+    void* extra;
     void* callback;
     void* user_data;
 } read_ctx;
@@ -808,7 +913,8 @@ int gen_read(litestore* ctx,
 
         if (rv == LITESTORE_OK && type == op.object_type)
         {
-            rv = (*op.read)(ctx, id, key, key_len, op.callback, op.user_data);
+            rv = (*op.read)(ctx, id, key, key_len, op.extra,
+                            op.callback, op.user_data);
         }
         else
         {
@@ -1399,7 +1505,7 @@ int litestore_create_raw(litestore* ctx,
 int litestore_read_raw(litestore* ctx, litestore_slice_t key,
                        litestore_read_raw_cb callback, void* user_data)
 {
-    read_ctx op = {LS_RAW, &read_raw_data, callback, user_data};
+    read_ctx op = {LS_RAW, &read_raw_data, NULL, callback, user_data};
     return gen_read(ctx, key.data, key.length, op);
 }
 
@@ -1424,7 +1530,17 @@ int litestore_create_array(litestore* ctx, litestore_slice_t key,
 int litestore_read_array(litestore* ctx, litestore_slice_t key,
                          litestore_read_array_cb callback, void* user_data)
 {
-    read_ctx op = {LS_ARRAY, &read_array_data, callback, user_data};
+    read_ctx op = {LS_ARRAY, &read_array_data, NULL, callback, user_data};
+    return gen_read(ctx, key.data, key.length, op);
+}
+
+int litestore_read_array_at(litestore* ctx,
+                            litestore_slice_t key,
+                            unsigned array_index,
+                            litestore_read_array_cb callback, void* user_data)
+{
+    read_ctx op = {LS_ARRAY, &read_array_data_at, &array_index,
+                   callback, user_data};
     return gen_read(ctx, key.data, key.length, op);
 }
 
@@ -1448,7 +1564,16 @@ int litestore_create_kv(litestore* ctx, litestore_slice_t key,
 int litestore_read_kv(litestore* ctx, litestore_slice_t key,
                       litestore_read_kv_cb callback, void* user_data)
 {
-    read_ctx op = {LS_KV, &read_kv_data, callback, user_data};
+    read_ctx op = {LS_KV, &read_kv_data, NULL, callback, user_data};
+    return gen_read(ctx, key.data, key.length, op);
+}
+
+int litestore_read_kv_with_key(litestore* ctx,
+                               litestore_slice_t key,
+                               litestore_blob_t kv_key,
+                               litestore_read_kv_cb callback, void* user_data)
+{
+    read_ctx op = {LS_KV, &read_kv_data_with_key, &kv_key, callback, user_data};
     return gen_read(ctx, key.data, key.length, op);
 }
 
