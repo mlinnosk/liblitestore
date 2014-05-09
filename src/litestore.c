@@ -596,7 +596,7 @@ int gen_create(litestore* ctx,
 
     if (ctx && key && key_len > 0 && op.create && op.data)
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
         rv = create_key(ctx, key, key_len, op.object_type, &new_id);
@@ -905,7 +905,7 @@ int gen_read(litestore* ctx,
 
     if (ctx && key && key_len > 0 && op.read)
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
@@ -1262,7 +1262,7 @@ int gen_update(litestore* ctx,
 
     if (ctx && key && key_len > 0 && op.update && op.data)
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
@@ -1420,7 +1420,7 @@ int litestore_create_null(litestore* ctx, litestore_slice_t key)
 
     if (ctx && slice_valid(key))
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t new_id = 0;
         rv = create_key(ctx, key.data, key.length, LS_NULL, &new_id);
@@ -1440,7 +1440,7 @@ int litestore_read_null(litestore* ctx, litestore_slice_t key)
 
     if (ctx && slice_valid(key))
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int type = -1;
@@ -1465,7 +1465,7 @@ int litestore_update_null(litestore* ctx, litestore_slice_t key)
     int rv = LITESTORE_ERR;
     if (ctx && slice_valid(key))
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         litestore_id_t id = 0;
         int old_type = -1;
@@ -1594,7 +1594,7 @@ int litestore_delete(litestore* ctx, litestore_slice_t key)
     /* delete should cascade */
     if (ctx && slice_valid(key) && ctx->delete_key)
     {
-        int own_tx = opt_begin_tx(ctx);
+        const int own_tx = opt_begin_tx(ctx);
 
         sqlite3_reset(ctx->delete_key);
         if (sqlite3_bind_text(ctx->delete_key,
