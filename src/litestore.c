@@ -1636,6 +1636,8 @@ int litestore_read_keys(litestore* ctx,
 
     if (ctx->read_keys && callback)
     {
+        const int own_tx = opt_begin_tx(ctx);
+
         if (sqlite3_bind_text(ctx->read_keys, 1,
                               key_pattern.data, key_pattern.length,
                               SQLITE_STATIC)
@@ -1676,6 +1678,11 @@ int litestore_read_keys(litestore* ctx,
             }
 
             sqlite3_reset(ctx->read_keys);
+        }
+
+        if (own_tx)
+        {
+            opt_end_tx(ctx, rv);
         }
     }
 
