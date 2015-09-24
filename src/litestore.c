@@ -13,7 +13,7 @@
 
 
 #ifdef __cplusplus
-extern "C"
+extern "C" {
 #endif
 
 #define UNUSED(x) (void)(x)
