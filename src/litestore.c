@@ -616,28 +616,20 @@ int update_raw_data(litestore* ctx,
     UNUSED(old_type);
 
     int rv = LITESTORE_OK;
-    // @todo useles
-    if (rv == LITESTORE_OK)
-    {
-        litestore_blob_t* value = (litestore_blob_t*)data;
 
-        /* try update, if it fails create */
-        if (sqlite3_bind_blob(ctx->update_raw_data, 1,
-                              value->data, value->size,
-                              SQLITE_STATIC) == SQLITE_OK
-            && sqlite3_bind_int64(ctx->update_raw_data, 2, id) == SQLITE_OK)
+    litestore_blob_t* value = (litestore_blob_t*)data;
+
+    /* try update, if it fails create */
+    if (sqlite3_bind_blob(ctx->update_raw_data, 1,
+                          value->data, value->size,
+                          SQLITE_STATIC) == SQLITE_OK
+        && sqlite3_bind_int64(ctx->update_raw_data, 2, id) == SQLITE_OK)
+    {
+        if (sqlite3_step(ctx->update_raw_data) == SQLITE_DONE)
         {
-            if (sqlite3_step(ctx->update_raw_data) == SQLITE_DONE)
+            if (sqlite3_changes(ctx->db) == 0)
             {
-                if (sqlite3_changes(ctx->db) == 0)
-                {
-                    rv = create_raw_data(ctx, id, value);
-                }
-            }
-            else
-            {
-                sqlite_error(ctx);
-                rv = LITESTORE_ERR;
+                rv = create_raw_data(ctx, id, value);
             }
         }
         else
@@ -645,8 +637,13 @@ int update_raw_data(litestore* ctx,
             sqlite_error(ctx);
             rv = LITESTORE_ERR;
         }
-        sqlite3_reset(ctx->update_raw_data);
     }
+    else
+    {
+        sqlite_error(ctx);
+        rv = LITESTORE_ERR;
+    }
+    sqlite3_reset(ctx->update_raw_data);
 
     return rv;
 }
@@ -700,12 +697,6 @@ static inline
 int slice_valid(const litestore_slice_t s)
 {
     return s.data && s.length > 0;
-}
-
-static inline
-int blob_valid(const litestore_blob_t b)
-{
-    return b.data && b.size > 0;
 }
 
 /* from litestore_helpers.h */
