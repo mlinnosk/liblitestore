@@ -2,3 +2,9 @@ litestore_test
 *.o
 *.so
 example
+CMakeFiles/*
+Makefile
+.vscode/*
+*.cmake
+CMakeCache.txt
+libgtest.a

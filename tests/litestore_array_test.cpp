@@ -5,7 +5,7 @@
  */
 #include <gtest/gtest.h>
 
-#include "litestore.h"
+#include "litestore/litestore.h"
 #include "litestore_test_common.h"
 #include "litestore_test_iterators.h"
 

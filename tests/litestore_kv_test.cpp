@@ -62,7 +62,7 @@ struct LitestoreKVTest : public LitestoreTest
                 reinterpret_cast<const char*>(
                     sqlite3_column_blob(stmt, 1));
             int size = sqlite3_column_bytes(stmt, 1);
-            const std::string key(n, size);
+            const std::string k(n, size);
 
             n = reinterpret_cast<const char*>(
                 sqlite3_column_blob(stmt, 2));
@@ -70,7 +70,7 @@ struct LitestoreKVTest : public LitestoreTest
             const std::string value(n, size);
 
             results.push_back(
-                KVData(sqlite3_column_int64(stmt, 0), key, value));
+                KVData(sqlite3_column_int64(stmt, 0), k, value));
         }
         sqlite3_reset(stmt);
         sqlite3_finalize(stmt);

@@ -3,7 +3,7 @@
  *
  * See the file LICENSE.txt for copying permission.
  */
-#include "litestore.h"
+#include "litestore/litestore.h"
 
 #include <stdlib.h>
 #include <string.h>

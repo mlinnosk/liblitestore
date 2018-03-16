@@ -12,7 +12,7 @@
 
 #include <sqlite3.h>
 
-#include "litestore.h"
+#include "litestore/litestore.h"
 
 
 namespace ls
@@ -119,6 +119,7 @@ struct LitestoreTest : Test
 inline
 void errorCB(const int error, const char* errStr, void* user_data)
 {
+    (void)error;
     LitestoreTest* t = static_cast<LitestoreTest*>(user_data);
     t->lsError(errStr);
 }

@@ -11,7 +11,7 @@
 
 #include <sqlite3.h>
 
-#include "litestore.h"
+#include "litestore/litestore.h"
 #include "litestore_test_common.h"
 
 
@@ -127,12 +127,17 @@ int vecPushBack(litestore_slice_t key, int objectType, void* user_data)
 
 TEST_F(LitestoreRawTest, check_version)
 {
-    sqlite3* db = (sqlite3*)litestore_native_ctx(ctx);
+    sqlite3* ldb = (sqlite3*)litestore_native_ctx(ctx);
     sqlite3_stmt* s = NULL;
     const std::string stmt("SELECT schema_version FROM meta;");
     ASSERT_EQ(
         SQLITE_OK,
-        sqlite3_prepare_v2(db, stmt.c_str(), stmt.length(), &s, NULL));
+        sqlite3_prepare_v2(
+            ldb,
+            stmt.c_str(),
+            static_cast<int>(stmt.length()),
+            &s,
+            NULL));
     if (sqlite3_step(s) == SQLITE_ROW)
     {
         EXPECT_EQ(1, sqlite3_column_int(s, 0));

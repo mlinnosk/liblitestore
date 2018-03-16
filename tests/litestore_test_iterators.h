@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "litestore_iterator.h"
+#include "litestore/litestore_iterator.h"
 
 
 namespace ls

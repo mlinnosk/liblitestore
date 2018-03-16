@@ -5,7 +5,7 @@
  */
 #include <gtest/gtest.h>
 
-#include "litestore_helpers.h"
+#include "litestore/litestore_helpers.h"
 
 TEST(LitestoreHelpers, make_blob_returns_object)
 {

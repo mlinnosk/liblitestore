@@ -1,18 +1,19 @@
 Litestore library
 =================
+https://travis-ci.org/mlinnosk/liblitestore.svg?branch=master
 
 About
 -----
 ### What it is and isn't?
-Litestore library is a lightweight, embeddable, zero config, key-value style
+Litestore library is a **lightweight**, **embeddable**, **zero config**, **key-value** style
 storage system build on SQLite3 database (http://www.sqlite.org/).
 
 Litestore is quite low level. It can be used as is but is intended to be built
 upon. More about the design in section 'Implementation details'.
 
-It's not a full document database or key-value store server system.
-LIttle like comparing SQLite to Mysql or PotgreSQL (actually SQLite compares
-better than Litestore to Couch...).
+It's **not** a full document database or key-value store server system.
+Little like comparing SQLite to Mysql or PotgreSQL (actually SQLite compares
+better than Litestore to CouchDB or MongoDB...).
 
 ### Why should I use it?
 * If you just want things to work and don't really care about SQL or playing
@@ -31,11 +32,13 @@ SQLite is released in the public domain,
 see: http://www.sqlite.org/copyright.html
 This library does not modify SQLite, only links against it.
 
-Please inform me if you use the library (markku.linnoskivi@gmail.com)!
+Please inform me if you use the library (markku.linnoskivi@iki.fi)!
 
 Building
 --------
-make && sudo make install
+cmake .
+make litestore
+[make unit_tests && ./tests/unit_tests]
 
 ### Dependencies
 The library:
@@ -43,15 +46,14 @@ The library:
 
     Should be adaptable to older standard.
     
-   Tested with gcc (4.7.3 64bit, Linux)
-* Make or your own build system (*compile*)
-* SQLite3 library (*compile*, *runtime*)
-    
-   http://www.sqlite.org/
+   Tested with gcc (7.2 64bit, Linux and 6.x 64bit in TravisCI)
+* CMake supported build system or your own build system (*compile*)
 
 For tests:
-* C++ compiler
-* gtest
+* C++14 compiler
+
+NOTE: sqlite3 and Google test are statically linked and part of this repo.
+Theres no reason why one couldn't link against shared sqlite3 if one chooses to.
 
 Versioning
 ----------
@@ -65,7 +67,7 @@ Usage example
 #include <stdlib.h>
 #include <string.h>
 
-#include "litestore.h"
+#include "litestore/litestore.h"
 
 /* Callback for raw data, that allocates a new string. */
 static

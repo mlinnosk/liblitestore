@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "litestore_iterator.h"
+#include "litestore/litestore_iterator.h"
 #include "litestore_test_iterators.h"
 
 
