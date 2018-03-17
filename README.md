@@ -36,7 +36,9 @@ Please inform me if you use the library (markku.linnoskivi@iki.fi)!
 
 Building
 --------
-cmake .
+mkdir build
+cd build
+cmake ../
 make litestore
 [make unit_tests && ./tests/unit_tests]
 
