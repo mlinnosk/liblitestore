@@ -27,3 +27,8 @@ target_include_directories(litestore
     PUBLIC ${INCLUDE_DIR}
 )
 target_link_libraries(litestore sqlite3)
+
+CONFIGURE_FILE(
+  "${CMAKE_CURRENT_SOURCE_DIR}/pkg-config.pc.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc"
+)
