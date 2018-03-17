@@ -32,3 +32,15 @@ CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/pkg-config.pc.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc"
 )
+
+# install directives
+install(TARGETS litestore LIBRARY
+    DESTINATION lib)
+install(FILES
+    ${INCLUDE_DIR}/litestore/litestore.h
+    ${INCLUDE_DIR}/litestore/litestore_helpers.h
+    ${INCLUDE_DIR}/litestore/litestore_iterator.h
+    DESTINATION include/litestore)
+install(FILES "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc"
+    DESTINATION lib/pkgconfig)
+
