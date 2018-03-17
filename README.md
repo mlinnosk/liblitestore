@@ -1,6 +1,6 @@
 Litestore library
 =================
-https://travis-ci.org/mlinnosk/liblitestore.svg?branch=master
+![Buid status](https://travis-ci.org/mlinnosk/liblitestore.svg?branch=master)
 
 About
 -----
