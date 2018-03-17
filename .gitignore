@@ -8,3 +8,5 @@ Makefile
 *.cmake
 CMakeCache.txt
 libgtest.a
+build/*
+litestore.code-workspace
