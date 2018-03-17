@@ -15,6 +15,7 @@ addons:
 
 
 script:
-  - CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake .
-  - cmake --build .
+  - mkdir build && cd build
+  - CXX=/usr/bin/g++-6 CC=/usr/bin/gcc-6 cmake ../
+  - make
   - ./tests/unit_tests
