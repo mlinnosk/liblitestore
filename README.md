@@ -152,11 +152,9 @@ since objects are accessed based on the key.
 
 ### Object values
 #### Value types
-Litestore can create four (4) different types of objects. These are:
+Litestore can create two (2) different types of objects. These are:
 * null
 * raw
-* array
-* key-value
 
 ##### Null
 Simplest is the **null** type. Basically it can be used as **boolean** type
@@ -168,19 +166,6 @@ The **raw** type is just a binary **blob** and is saved as is.
 It can be used for any user defined type that can be saved as bytes,
 either directly or by serializing. Format is totally user dependent.
 
-##### Array
-**Arrays** are actually **arrays of blobs**. They retain the order of objects.
-I.E. when an array is read, the objects will be in the same order as they
-apeared in the original array that was saved.
-
-The array indexes, objects, are blobs and hence have the same propertied as
-raw data.
-
-##### Key-value
-**Key-value** object is basically a heterogenus **blob-blob map**, where both
-the map-key and the map-value are user defined data. One thing to note is that
-the map-key is a blob and equality is compared as byte data
-(SQLite [implementation](http://www.sqlite.org/datatype3.html)).
 
 Implementation details
 ----------------------
@@ -239,6 +224,3 @@ Donate
 <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
 </form>
 </div>
-
-### Bitcoin
-17LEp96XCiTQwTrFWnaQ7jzJC1YjK5pJci

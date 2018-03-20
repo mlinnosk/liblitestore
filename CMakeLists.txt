@@ -17,8 +17,7 @@ add_library(litestore SHARED
     ${SRC_DIR}/litestore.c)
 #set_target_properties(litestore PROPERTIES
 #    PUBLIC_HEADER src/litestore.h
-#    PUBLIC_HEADER src/litestore_helpers.h
-#    PUBLIC_HEADER src/litestore_iterator.h)
+#    PUBLIC_HEADER src/litestore_helpers.h)
 target_compile_options(litestore
     PUBLIC -fPIC
     # -Wpedantic -Wconversion -Wswitch-default -Wswitch-enum -Wunreachable-code -Wwrite-strings -Wcast-align -Wshadow -Wundef
@@ -39,7 +38,6 @@ install(TARGETS litestore LIBRARY
 install(FILES
     ${INCLUDE_DIR}/litestore/litestore.h
     ${INCLUDE_DIR}/litestore/litestore_helpers.h
-    ${INCLUDE_DIR}/litestore/litestore_iterator.h
     DESTINATION include/litestore)
 install(FILES "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc"
     DESTINATION lib/pkgconfig)
