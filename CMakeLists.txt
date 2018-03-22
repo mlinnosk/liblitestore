@@ -23,9 +23,11 @@ target_compile_options(litestore
     # -Wpedantic -Wconversion -Wswitch-default -Wswitch-enum -Wunreachable-code -Wwrite-strings -Wcast-align -Wshadow -Wundef
     PRIVATE -std=c99 -O3 -Wall -Wextra -Werror)
 target_include_directories(litestore
-    PUBLIC ${INCLUDE_DIR}
+    INTERFACE ${INCLUDE_DIR}
+    PRIVATE ${INCLUDE_DIR}
 )
-target_link_libraries(litestore sqlite3)
+target_link_libraries(litestore
+    PRIVATE sqlite3)
 
 CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/pkg-config.pc.cmake"
