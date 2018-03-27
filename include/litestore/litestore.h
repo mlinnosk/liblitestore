@@ -37,9 +37,7 @@ enum
 enum
 {
     LITESTORE_NULL_T = 0,
-    LITESTORE_RAW_T = 1,
-    LITESTORE_ARRAY_T = 2,
-    LITESTORE_KV_T = 3
+    LITESTORE_RAW_T = 1
 };
 
 /**
