@@ -159,17 +159,17 @@ int litestore_update_null(litestore* ctx, litestore_slice_t key);
  * @return LITESTORE_OK on success
  *         LITESTORE_ERR on error.
  */
-int litestore_create_raw(litestore* ctx,
-                         litestore_slice_t key,
-                         litestore_blob_t value);
+int litestore_create(litestore* ctx,
+                     litestore_slice_t key,
+                     litestore_blob_t value);
 /**
- * A callback to be used with read_raw.
+ * A callback to be used with read.
  *
  * @param value The data read.
  * @param user_data User provided data.
  * @return On success LITESTORE_OK, user defined otherwise.
  */
-typedef int (*litestore_read_raw_cb)(litestore_blob_t value, void* user_data);
+typedef int (*litestore_read_cb)(litestore_blob_t value, void* user_data);
 /**
  * Read a 'raw' value with the given key.
  *
@@ -182,8 +182,10 @@ typedef int (*litestore_read_raw_cb)(litestore_blob_t value, void* user_data);
  *         Callback return if other than LITESTORE_OK,
  *         LITESTORE_ERR otherwise.
  */
-int litestore_read_raw(litestore* ctx, litestore_slice_t key,
-                       litestore_read_raw_cb callback, void* user_data);
+int litestore_read(litestore* ctx,
+                   litestore_slice_t key,
+                   litestore_read_cb callback,
+                   void* user_data);
 /**
  * Update existing value with new 'raw' data.
  * If the key does not exist, it will be created.
@@ -196,9 +198,9 @@ int litestore_read_raw(litestore* ctx, litestore_slice_t key,
  * @return LITESTORE_OK on success
  *         LITESTORE_ERR on error.
  */
-int litestore_update_raw(litestore* ctx,
-                         litestore_slice_t key,
-                         litestore_blob_t value);
+int litestore_update(litestore* ctx,
+                     litestore_slice_t key,
+                     litestore_blob_t value);
 /**
  * Delete the given entry from the store.
  * Deletes all types.

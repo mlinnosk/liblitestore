@@ -195,9 +195,9 @@ TEST_F(LitestoreRawTx, create_null_fails_for_dupliates)
     EXPECT_EQ(1u, errors.size());
 }
 
-TEST_F(LitestoreRawTx, create_raw_creates)
+TEST_F(LitestoreRawTx, create_creates)
 {
-    EXPECT_LS_OK(litestore_create_raw(ctx, slice(key), blob(rawData)));
+    EXPECT_LS_OK(litestore_create(ctx, slice(key), blob(rawData)));
 
     const Objects res = readObjects();
     ASSERT_EQ(1u, res.size());
@@ -215,9 +215,9 @@ TEST_F(LitestoreRawTx, delete_nulls)
     EXPECT_TRUE(readObjects().empty());
 }
 
-TEST_F(LitestoreRawTx, delete_raws)
+TEST_F(LitestoreRawTx, deletes)
 {
-    litestore_create_raw(ctx, slice(key), blob(rawData));
+    litestore_create(ctx, slice(key), blob(rawData));
     EXPECT_LS_OK(litestore_delete(ctx, slice(key)));
     EXPECT_TRUE(readObjects().empty());
     EXPECT_TRUE(readRawDatas().empty());
@@ -238,15 +238,15 @@ TEST_F(LitestoreRawTx, read_null_gives_null)
 
 TEST_F(LitestoreRawTx, read_null_returns_unknown_for_wrong_type)
 {
-    EXPECT_LS_OK(litestore_create_raw(ctx, slice(key), blob(rawData)));
+    EXPECT_LS_OK(litestore_create(ctx, slice(key), blob(rawData)));
     EXPECT_LS_ERR(litestore_read_null(ctx, slice(key)));
 }
 
-TEST_F(LitestoreRawTx, read_raw_gives_data)
+TEST_F(LitestoreRawTx, read_gives_data)
 {
-    litestore_create_raw(ctx, slice(key), blob(rawData));
+    litestore_create(ctx, slice(key), blob(rawData));
     std::string data;
-    EXPECT_LS_OK(litestore_read_raw(ctx, slice(key), &void2str, &data));
+    EXPECT_LS_OK(litestore_read(ctx, slice(key), &void2str, &data));
     EXPECT_EQ(rawData, data);
 }
 
@@ -261,10 +261,10 @@ TEST_F(LitestoreRawTx, read_null_with_bad_args)
     EXPECT_LS_ERR(litestore_read_null(ctx, litestore_slice(NULL, 0, 0)));
 }
 
-TEST_F(LitestoreRawTx, update_null_to_raw_to_null)
+TEST_F(LitestoreRawTx, update_null_to_to_null)
 {
     litestore_create_null(ctx, slice(key));
-    EXPECT_LS_OK(litestore_update_raw(ctx, slice(key), blob(rawData)));
+    EXPECT_LS_OK(litestore_update(ctx, slice(key), blob(rawData)));
     Objects objs = readObjects();
     ASSERT_EQ(1u, objs.size());
     EXPECT_EQ(1, objs[0].type);
@@ -277,29 +277,29 @@ TEST_F(LitestoreRawTx, update_null_to_raw_to_null)
     ASSERT_TRUE(readRawDatas().empty());
 }
 
-TEST_F(LitestoreRawTx, update_existing_raw_value)
+TEST_F(LitestoreRawTx, update_existing_value)
 {
-    litestore_create_raw(ctx, slice(key), blob(rawData));
+    litestore_create(ctx, slice(key), blob(rawData));
 
     const std::string newData("new_data");
-    ASSERT_LS_OK(litestore_update_raw(ctx, slice(key), blob(newData)));
+    ASSERT_LS_OK(litestore_update(ctx, slice(key), blob(newData)));
     const RawDatas rawDatas = readRawDatas();
     ASSERT_EQ(1u, rawDatas.size());
     EXPECT_EQ(newData, rawDatas[0].rawValue);
 }
 
-TEST_F(LitestoreRawTx, read_raw_returns_unknown_for_wrong_type)
+TEST_F(LitestoreRawTx, read_returns_unknown_for_wrong_type)
 {
     EXPECT_LS_OK(litestore_create_null(ctx, slice(key)));
 
     std::string data;
-    EXPECT_LS_ERR(litestore_read_raw(ctx, slice(key), &void2str, &data));
+    EXPECT_LS_ERR(litestore_read(ctx, slice(key), &void2str, &data));
 }
 
-TEST_F(LitestoreRawTx, read_raw_returns_callback_error)
+TEST_F(LitestoreRawTx, read_returns_callback_error)
 {
-    litestore_create_raw(ctx, slice(key), blob(rawData));
-    EXPECT_EQ(100, litestore_read_raw(ctx, slice(key), &failCb, NULL));
+    litestore_create(ctx, slice(key), blob(rawData));
+    EXPECT_EQ(100, litestore_read(ctx, slice(key), &failCb, NULL));
 }
 
 TEST_F(LitestoreRawTx, read_keys_returns_all)

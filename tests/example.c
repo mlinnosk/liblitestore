@@ -44,7 +44,7 @@ int main(const int argc, const char** argv)
     /* Save raw data */
     const char* key = "Hello";
     const char* value = "World!";
-    if (litestore_create_raw(ls,
+    if (litestore_create(ls,
                              litestore_slice_str(key),
                              litestore_make_blob(value, strlen(value)))
         != LITESTORE_OK)
@@ -56,7 +56,7 @@ int main(const int argc, const char** argv)
 
     /* Read the created data, note callback usage */
     char* res = NULL;
-    if (litestore_read_raw(ls,
+    if (litestore_read(ls,
                            litestore_slice_str(key),
                            &alloc_str, &res)
         == LITESTORE_OK)

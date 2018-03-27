@@ -59,10 +59,10 @@ sqlite3_stmt* delete_key;
 sqlite3_stmt* update_type;
 sqlite3_stmt* read_keys;
 /* raw */
-sqlite3_stmt* create_raw_data;
-sqlite3_stmt* read_raw_data;
-sqlite3_stmt* update_raw_data;
-sqlite3_stmt* delete_raw_data;
+sqlite3_stmt* create_data;
+sqlite3_stmt* read_data;
+sqlite3_stmt* update_data;
+sqlite3_stmt* delete_data;
 };
 
 /* Possible db.objects.type values */
@@ -202,16 +202,16 @@ int prepare_statements(litestore* ctx)
         /* raw */
         || prepare_stmt(ctx,
                         "INSERT INTO raw_data (id, raw_value) VALUES (?, ?);",
-                        &(ctx->create_raw_data)) != LITESTORE_OK
+                        &(ctx->create_data)) != LITESTORE_OK
         || prepare_stmt(ctx,
                         "SELECT raw_value FROM raw_data WHERE id = ?;",
-                        &(ctx->read_raw_data)) != LITESTORE_OK
+                        &(ctx->read_data)) != LITESTORE_OK
         || prepare_stmt(ctx,
                         "UPDATE raw_data SET raw_value = ? WHERE id = ?;",
-                        &(ctx->update_raw_data)) != LITESTORE_OK
+                        &(ctx->update_data)) != LITESTORE_OK
         || prepare_stmt(ctx,
                         "DELETE FROM raw_data WHERE id = ?;",
-                        &(ctx->delete_raw_data)) != LITESTORE_OK)
+                        &(ctx->delete_data)) != LITESTORE_OK)
     {
         sqlite_error(ctx);
         return LITESTORE_ERR;
@@ -314,7 +314,7 @@ void finalize_stmt(sqlite3_stmt** stmt)
 static
 int finalize_statements(litestore* ctx)
 {
-    /* object */
+    /* key */
     finalize_stmt(&(ctx->create_key));
     finalize_stmt(&(ctx->read_key));
     finalize_stmt(&(ctx->delete_key));
@@ -324,11 +324,11 @@ int finalize_statements(litestore* ctx)
     finalize_stmt(&(ctx->begin_tx));
     finalize_stmt(&(ctx->commit_tx));
     finalize_stmt(&(ctx->rollback_tx));
-    /* raw */
-    finalize_stmt(&(ctx->create_raw_data));
-    finalize_stmt(&(ctx->read_raw_data));
-    finalize_stmt(&(ctx->update_raw_data));
-    finalize_stmt(&(ctx->delete_raw_data));
+    /* object */
+    finalize_stmt(&(ctx->create_data));
+    finalize_stmt(&(ctx->read_data));
+    finalize_stmt(&(ctx->update_data));
+    finalize_stmt(&(ctx->delete_data));
     
     return LITESTORE_OK;
 }
@@ -339,7 +339,8 @@ int finalize_statements(litestore* ctx)
 /*-----------------------------------------*/
 static
 int create_key(litestore* ctx,
-               const char* key, const size_t key_len,
+               const char* key,
+               const size_t key_len,
                const int data_type,
                litestore_id_t* id)
 {
@@ -370,18 +371,18 @@ int create_key(litestore* ctx,
 }
 
 static
-int create_raw_data(litestore* ctx, litestore_id_t new_id, void* value)
+int create_data(litestore* ctx, litestore_id_t new_id, void* value)
 {
     int rv = LITESTORE_ERR;
 
     litestore_blob_t* blob = (litestore_blob_t*)value;
-    if (ctx->create_raw_data && blob->data && blob->size > 0)
+    if (ctx->create_data && blob->data && blob->size > 0)
     {
-        if (sqlite3_bind_int64(ctx->create_raw_data, 1, new_id) == SQLITE_OK
-            && sqlite3_bind_blob(ctx->create_raw_data,
+        if (sqlite3_bind_int64(ctx->create_data, 1, new_id) == SQLITE_OK
+            && sqlite3_bind_blob(ctx->create_data,
                                  2, blob->data, blob->size,
                                  SQLITE_STATIC) == SQLITE_OK
-            && sqlite3_step(ctx->create_raw_data) == SQLITE_DONE)
+            && sqlite3_step(ctx->create_data) == SQLITE_DONE)
         {
             rv = LITESTORE_OK;
         }
@@ -389,7 +390,7 @@ int create_raw_data(litestore* ctx, litestore_id_t new_id, void* value)
         {
             sqlite_error(ctx);
         }
-        sqlite3_reset(ctx->create_raw_data);
+        sqlite3_reset(ctx->create_data);
     }
     return rv;
 }
@@ -403,7 +404,8 @@ typedef struct
 
 static
 int gen_create(litestore* ctx,
-               const char* key, const size_t key_len,
+               const char* key,
+               const size_t key_len,
                create_ctx op)
 {
     int rv = LITESTORE_ERR;
@@ -433,8 +435,10 @@ int gen_create(litestore* ctx,
 /*-----------------------------------------*/
 static
 int read_object_type(litestore* ctx,
-                     const char* key, const size_t key_len,
-                     litestore_id_t* id, int* type)
+                     const char* key,
+                     const size_t key_len,
+                     litestore_id_t* id,
+                     int* type)
 {
     if (ctx->read_key && key && key_len > 0)
     {
@@ -461,26 +465,30 @@ int read_object_type(litestore* ctx,
 }
 
 static
-int read_raw_data(litestore* ctx, const litestore_id_t id,
-                  const void* key, const size_t key_len,
-                  void* extra, void* cb, void* user_data)
+int read_data(litestore* ctx,
+              const litestore_id_t id,
+              const void* key,
+              const size_t key_len,
+              void* extra,
+              void* cb,
+              void* user_data)
 {
     UNUSED(key);
     UNUSED(key_len);
     UNUSED(extra);
     int rv = LITESTORE_ERR;
 
-    if (ctx->read_raw_data && cb)
+    if (ctx->read_data && cb)
     {
-        litestore_read_raw_cb callback = (litestore_read_raw_cb)cb;
+        litestore_read_cb callback = (litestore_read_cb)cb;
 
-        if (sqlite3_bind_int64(ctx->read_raw_data, 1, id) == SQLITE_OK
-            && sqlite3_step(ctx->read_raw_data) == SQLITE_ROW)
+        if (sqlite3_bind_int64(ctx->read_data, 1, id) == SQLITE_OK
+            && sqlite3_step(ctx->read_data) == SQLITE_ROW)
         {
             const void* raw_data =
-                sqlite3_column_blob(ctx->read_raw_data, 0);
+                sqlite3_column_blob(ctx->read_data, 0);
             const int bytes =
-                sqlite3_column_bytes(ctx->read_raw_data, 0);
+                sqlite3_column_bytes(ctx->read_data, 0);
             if (bytes > 0)
             {
                 rv = (*callback)(
@@ -491,7 +499,7 @@ int read_raw_data(litestore* ctx, const litestore_id_t id,
         {
             sqlite_error(ctx);
         }
-        sqlite3_reset(ctx->read_raw_data);
+        sqlite3_reset(ctx->read_data);
     }
 
     return rv;
@@ -510,7 +518,8 @@ typedef struct
 
 static
 int gen_read(litestore* ctx,
-             const char* key, const size_t key_len,
+             const char* key,
+             const size_t key_len,
              read_ctx op)
 {
     int rv = LITESTORE_ERR;
@@ -547,17 +556,17 @@ int gen_read(litestore* ctx,
 /*----------------- DELETE ----------------*/
 /*-----------------------------------------*/
 static
-int delete_raw_data(litestore*ctx, const litestore_id_t id)
+int delete_data(litestore*ctx, const litestore_id_t id)
 {
-    if (ctx->delete_raw_data)
+    if (ctx->delete_data)
     {
-        sqlite3_reset(ctx->delete_raw_data);
-        if ((sqlite3_bind_int64(ctx->delete_raw_data, 1, id) != SQLITE_OK))
+        sqlite3_reset(ctx->delete_data);
+        if ((sqlite3_bind_int64(ctx->delete_data, 1, id) != SQLITE_OK))
         {
             sqlite_error(ctx);
             return LITESTORE_ERR;
         }
-        if (sqlite3_step(ctx->delete_raw_data) != SQLITE_DONE)
+        if (sqlite3_step(ctx->delete_data) != SQLITE_DONE)
         {
             sqlite_error(ctx);
             return LITESTORE_ERR;
@@ -576,7 +585,8 @@ int delete_raw_data(litestore*ctx, const litestore_id_t id)
 /*-----------------------------------------*/
 static
 int update_object_type(litestore* ctx,
-                       const litestore_id_t id, const int type)
+                       const litestore_id_t id,
+                       const int type)
 {
     sqlite3_reset(ctx->update_type);
     if (sqlite3_bind_int(ctx->update_type, 1, type) != SQLITE_OK
@@ -596,14 +606,15 @@ int update_object_type(litestore* ctx,
 
 static
 int update_null(litestore* ctx,
-                const litestore_id_t id, const int old_type)
+                const litestore_id_t id,
+                const int old_type)
 {
     int rv = LITESTORE_OK;
 
     switch (old_type)
     {
         case LS_RAW:
-            rv = delete_raw_data(ctx, id);
+            rv = delete_data(ctx, id);
             break;
     }
 
@@ -611,8 +622,10 @@ int update_null(litestore* ctx,
 }
 
 static
-int update_raw_data(litestore* ctx,
-                    const litestore_id_t id, const int old_type, void* data)
+int update_data(litestore* ctx,
+                const litestore_id_t id,
+                const int old_type,
+                void* data)
 {
     UNUSED(old_type);
     
@@ -623,16 +636,16 @@ int update_raw_data(litestore* ctx,
         litestore_blob_t* value = (litestore_blob_t*)data;
 
         /* try update, if it fails create */
-        if (sqlite3_bind_blob(ctx->update_raw_data, 1,
+        if (sqlite3_bind_blob(ctx->update_data, 1,
                               value->data, value->size,
                               SQLITE_STATIC) == SQLITE_OK
-            && sqlite3_bind_int64(ctx->update_raw_data, 2, id) == SQLITE_OK)
+            && sqlite3_bind_int64(ctx->update_data, 2, id) == SQLITE_OK)
         {
-            if (sqlite3_step(ctx->update_raw_data) == SQLITE_DONE)
+            if (sqlite3_step(ctx->update_data) == SQLITE_DONE)
             {
                 if (sqlite3_changes(ctx->db) == 0)
                 {
-                    rv = create_raw_data(ctx, id, value);
+                    rv = create_data(ctx, id, value);
                 }
             }
             else
@@ -646,7 +659,7 @@ int update_raw_data(litestore* ctx,
             sqlite_error(ctx);
             rv = LITESTORE_ERR;
         }
-        sqlite3_reset(ctx->update_raw_data);
+        sqlite3_reset(ctx->update_data);
     }
 
     return rv;
@@ -662,7 +675,8 @@ typedef struct
 
 static
 int gen_update(litestore* ctx,
-               const char* key, const size_t key_len,
+               const char* key,
+               const size_t key_len,
                update_ctx op)
 {
     int rv = LITESTORE_ERR;
@@ -718,7 +732,8 @@ litestore_blob_t litestore_make_blob(const void* data, const size_t size)
 
 /* from litestore_helpers.h */
 litestore_slice_t litestore_slice(const char* str,
-                                  const size_t begin, const size_t end)
+                                  const size_t begin,
+                                  const size_t end)
 {
     if (str && end > begin)
     {
@@ -899,28 +914,30 @@ int litestore_update_null(litestore* ctx, litestore_slice_t key)
 }
 
 /*-----------------------------------------*/
-/*---------------- raw --------------------*/
+/*---------------- object -----------------*/
 /*-----------------------------------------*/
-int litestore_create_raw(litestore* ctx,
-                         litestore_slice_t key,
-                         litestore_blob_t value)
+int litestore_create(litestore* ctx,
+                     litestore_slice_t key,
+                     litestore_blob_t value)
 {
-    create_ctx op = {LS_RAW, &create_raw_data, &value};
+    create_ctx op = {LS_RAW, &create_data, &value};
     return gen_create(ctx, key.data, key.length, op);
 }
 
-int litestore_read_raw(litestore* ctx, litestore_slice_t key,
-                       litestore_read_raw_cb callback, void* user_data)
+int litestore_read(litestore* ctx,
+                   litestore_slice_t key,
+                   litestore_read_cb callback,
+                   void* user_data)
 {
-    read_ctx op = {LS_RAW, &read_raw_data, NULL, callback, user_data};
+    read_ctx op = {LS_RAW, &read_data, NULL, callback, user_data};
     return gen_read(ctx, key.data, key.length, op);
 }
 
-int litestore_update_raw(litestore* ctx,
-                         litestore_slice_t key,
-                         litestore_blob_t value)
+int litestore_update(litestore* ctx,
+                     litestore_slice_t key,
+                     litestore_blob_t value)
 {
-    update_ctx op = {LS_RAW, &update_raw_data, &create_raw_data, &value};
+    update_ctx op = {LS_RAW, &update_data, &create_data, &value};
     return gen_update(ctx, key.data, key.length, op);
 }
 
