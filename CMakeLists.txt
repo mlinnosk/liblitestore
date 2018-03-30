@@ -26,7 +26,9 @@ target_include_directories(litestore
     INTERFACE ${INCLUDE_DIR}
     PRIVATE ${INCLUDE_DIR}
 )
+find_package (Threads)
 target_link_libraries(litestore
+    PUBLIC ${CMAKE_THREAD_LIBS_INIT} dl
     PRIVATE sqlite3)
 
 CONFIGURE_FILE(
